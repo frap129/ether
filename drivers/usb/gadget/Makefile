@@ -1,6 +1,8 @@
 #
 # USB peripheral controller drivers
 #
+CFLAGS_KERNEL := -Wno-unused-label
+
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
 
 # READ_TOC command support MAC OS for Virtual CD-ROM
