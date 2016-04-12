@@ -1458,6 +1458,8 @@ static void msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 			halt_cmd.blocking_halt = 0;
 
 			msm_isp_axi_halt(vfe_dev, &halt_cmd);
+
+			memset(&error_event, 0, sizeof(error_event));
 			error_event.frame_id =
 				vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id;
 			error_event.u.error_info.err_type =
