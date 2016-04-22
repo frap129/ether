@@ -174,7 +174,7 @@ BUILD_DEBUG_VERSION := 1
 BUILD_DIAG_VERSION := 1
 
 #Do we panic on bug?  default is to warn
-PANIC_ON_BUG := 1
+PANIC_ON_BUG := 0
 
 #Re-enable wifi on WDI timeout
 RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
@@ -1580,6 +1580,9 @@ CDEFINES += -DFORCE_LEGACY_PCI_INTERRUPTS
 endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)
+
+# Use Os even if we use other optimization levels globally
+EXTRA_CFLAGS += -Os
 
 # Currently, for versions of gcc which support it, the kernel Makefile
 # is disabling the maybe-uninitialized warning.  Re-enable it for the
