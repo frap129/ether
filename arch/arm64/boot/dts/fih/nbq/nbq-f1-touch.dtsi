@@ -28,6 +28,7 @@
 			synaptics,reset-gpio = <&msm_gpio 78 0x00>;
 			synaptics,irq-gpio = <&msm_gpio 1 0x2008>;
 			synaptics,disable-gpios;
+			synaptics,resume-in-workqueue;
 			/* Underlying clocks used by secure touch */
 			clock-names = "iface_clk", "core_clk";
 			clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
