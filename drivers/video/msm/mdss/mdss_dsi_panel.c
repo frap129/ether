@@ -343,9 +343,6 @@ disp_ldo_gpio_err:
 	return rc;
 }
 
-//JYLee added to force lp11 before reset to match spec 20160409 {
-extern void mdss_dsi_force_lp11(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
-//JYLee added to force lp11 before reset to match spec 20160409 }
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -390,17 +387,6 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-
-//JYLee added to force lp11 before reset to match spec 20160409 {
-			mdss_dsi_force_lp11(ctrl_pdata);
-//JYLee added to force lp11 before reset to match spec 20160409 }
-#ifdef CONFIG_MACH_FIH_NBQ
-			if (gpio_is_valid(ctrl_pdata->disp_ldo_gpio))
-				gpio_set_value((ctrl_pdata->disp_ldo_gpio), 1);
-#endif
-//JYLee added to force lp11 before reset to match spec 20160409 {
-			usleep(5000);
-//JYLee added to force lp11 before reset to match spec 20160409 }
 
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
