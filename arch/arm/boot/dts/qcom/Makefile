@@ -224,49 +224,59 @@ dtb-$(CONFIG_ARCH_APQ8084) += apq8084-v1.0-old-pwr-grid-liquid.dtb \
 	apq8084-v1.1-old-pwr-grid-mdm9x35-alt-cdp.dtb \
 	apq8084-v1.1-mdm9x35-alt-cdp.dtb \
 	apq8084-v1.1-sbc.dtb
-dtb-$(CONFIG_ARCH_MSM8994) += msm8994-v1-sim.dtb \
-	msm8994-rumi.dtb \
-	msm8994-v1-cdp.dtb \
-	msm8994-pmi8994-pm8004-v1-cdp.dtb \
-	msm8994-v1-mtp.dtb \
-	msm8994-pmi8994-pm8004-v1-mtp.dtb \
-	msm8994-v1-liquid.dtb \
-	msm8994-v1-fluid.dtb \
-	apq8094-v1-cdp.dtb \
-	apq8094-v1-mtp.dtb \
-	apq8094-v1-liquid.dtb \
-	apq8094-v1-fluid.dtb \
-	apq8094-v1-dragonboard.dtb \
-	msm8994-v2-sim.dtb \
-	msm8994-v2.0-cdp.dtb \
-	msm8994-pmi8994-pm8004-v2.0-cdp.dtb \
-	msm8994-v2.0-mtp.dtb \
-	msm8994-pmi8994-pm8004-v2.0-mtp.dtb \
-	msm8994-v2.0-liquid.dtb \
-	msm8994-v2.0-fluid.dtb \
-	apq8094-v2.0-cdp.dtb \
-	apq8094-v2.0-mtp.dtb \
-	apq8094-v2.0-liquid.dtb \
-	apq8094-v2.0-fluid.dtb \
-	apq8094-v2.0-dragonboard.dtb \
-	msm8994-v2.1-mtp.dtb \
-	msm8994-v2.1-cdp.dtb \
-	msm8994-v2.1-liquid.dtb \
-	msm8994-v2.1-fluid.dtb \
-	msm8994-pmi8994-pm8004-v2.1-cdp.dtb \
-	msm8994-pmi8994-pm8004-v2.1-mtp.dtb \
-	apq8094-v2.1-cdp.dtb \
-	apq8094-v2.1-mtp.dtb \
-	apq8094-v2.1-liquid.dtb \
-	apq8094-v2.1-fluid.dtb \
-	apq8094-v2.1-dragonboard.dtb
+#dtb-$(CONFIG_ARCH_MSM8994) += msm8994-v1-sim.dtb \
+#	msm8994-rumi.dtb \
+#	msm8994-v1-cdp.dtb \
+#	msm8994-pmi8994-pm8004-v1-cdp.dtb \
+#	msm8994-v1-mtp.dtb \
+#	msm8994-pmi8994-pm8004-v1-mtp.dtb \
+#	msm8994-v1-liquid.dtb \
+#	msm8994-v1-fluid.dtb \
+#	apq8094-v1-cdp.dtb \
+#	apq8094-v1-mtp.dtb \
+#	apq8094-v1-liquid.dtb \
+#	apq8094-v1-fluid.dtb \
+#	apq8094-v1-dragonboard.dtb \
+#	msm8994-v2-sim.dtb \
+#	msm8994-v2.0-cdp.dtb \
+#	msm8994-pmi8994-pm8004-v2.0-cdp.dtb \
+#	msm8994-v2.0-mtp.dtb \
+#	msm8994-pmi8994-pm8004-v2.0-mtp.dtb \
+#	msm8994-v2.0-liquid.dtb \
+#	msm8994-v2.0-fluid.dtb \
+#	apq8094-v2.0-cdp.dtb \
+#	apq8094-v2.0-mtp.dtb \
+#	apq8094-v2.0-liquid.dtb \
+#	apq8094-v2.0-fluid.dtb \
+#	apq8094-v2.0-dragonboard.dtb \
+#	msm8994-v2.1-mtp.dtb \
+#	msm8994-v2.1-cdp.dtb \
+#	msm8994-v2.1-liquid.dtb \
+#	msm8994-v2.1-fluid.dtb \
+#	msm8994-pmi8994-pm8004-v2.1-cdp.dtb \
+#	msm8994-pmi8994-pm8004-v2.1-mtp.dtb \
+#	apq8094-v2.1-cdp.dtb \
+#	apq8094-v2.1-mtp.dtb \
+#	apq8094-v2.1-liquid.dtb \
+#	apq8094-v2.1-fluid.dtb \
+#	apq8094-v2.1-dragonboard.dtb
 
-dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
-	msm8992-rumi.dtb \
-	msm8992-cdp.dtb \
-	msm8992-mtp.dtb \
-	msm8992-pmi8994-pm8004-cdp.dtb \
-	msm8992-pmi8994-pm8004-mtp.dtb
+#dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
+#	msm8992-rumi.dtb \
+#	msm8992-cdp.dtb \
+#	msm8992-mtp.dtb \
+#	msm8992-pmi8994-pm8004-cdp.dtb \
+#	msm8992-pmi8994-pm8004-mtp.dtb
+dtb-$(CONFIG_ARCH_MSM8992) += msm8992-mtp.dtb \
+	msm8992-pmi8994-pm8004-mtp.dtb \
+	msm8992_nbq_evt.dtb \
+	msm8992_nbq_evt15.dtb \
+	msm8992_nbq_evt1c.dtb \
+	msm8992_nbq_dvt.dtb \
+	msm8992_vzw_evt1.dtb \
+	msm8992_nbq_dvt2.dtb \
+	msm8992_nbq_pvt.dtb \
+	msm8992_vzw_evt2.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)

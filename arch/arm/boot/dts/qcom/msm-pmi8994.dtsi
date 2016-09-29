@@ -209,7 +209,7 @@
 			qcom,dc-psy-ma = <1500>;
 			qcom,rparasitic-uohm = <100000>;
 			qcom,bms-psy-name = "bms";
-			qcom,thermal-mitigation = <1500 700 600 0>;
+			qcom,thermal-mitigation = <3000 2000 1500 1200 0>;
 			qcom,parallel-usb-min-current-ma = <1400>;
 			qcom,parallel-usb-9v-min-current-ma = <900>;
 			qcom,parallel-allowed-lowering-ma = <500>;
@@ -531,17 +531,18 @@
 			qcom,fdbk-output = "auto";
 			qcom,vref-mv = <350>;
 			qcom,switch-freq-khz = <800>;
-			qcom,ovp-mv = <29500>;
+			qcom,ovp-mv = <21500>; //JY modified for CTC BL spec 20151005 // 29500
 			qcom,ilim-ma = <980>;
 			qcom,boost-duty-ns = <26>;
 			qcom,mod-freq-khz = <9600>;
 			qcom,dim-mode = "hybrid";
 			qcom,hyb-thres = <625>;
 			qcom,sync-dly-us = <800>;
-			qcom,fs-curr-ua = <16000>;
+			qcom,fs-curr-ua = <19000>;
 			qcom,en-phase-stag;
-			qcom,led-strings-list = [00 01 02 03];
+			qcom,led-strings-list = [00 01]; //JY modified for CTC BL spec 20151005 //[00 01 02 03];
 			qcom,en-ext-pfet-sc-pro;
+			qcom,en-cabc; //JY added to enable CABC PWM 20160129
 		};
 
 		pmi8994_haptics: qcom,haptic@c000 {
@@ -573,7 +574,8 @@
 			reg = <0xd000 0x100>;
 			label = "rgb";
 			status = "okay";
-
+/*
+//FIH, Hubert, 20150828, NBQ and FAG does not use red and green led
 			qcom,rgb_0 {
 				label = "rgb";
 				qcom,id = <3>;
@@ -598,7 +600,7 @@
 				linux,name = "green";
 				linux,default-trigger = "battery-full";
 			};
-
+*/
 			qcom,rgb_2 {
 				label = "rgb";
 				qcom,id = <5>;
@@ -607,8 +609,8 @@
 				qcom,pwm-us = <1000>;
 				qcom,max-current = <12>;
 				qcom,default-state = "off";
-				linux,name = "blue";
-				linux,default-trigger = "boot-indication";
+				linux,name = "test_blue";
+			//	linux,default-trigger = "boot-indication";
 			};
 		};
 
