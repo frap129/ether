@@ -1,0 +1,37 @@
+&i2c_9 { /* BLSP9 QUP2 */
+	status = "ok";
+	lp5523@32 {
+		compatible = "national,lp5523";
+		reg = <0x32>;
+			enable-gpio = <&msm_gpio 25 0x00>;
+			trig-gpio = <&msm_gpio 21 0x00>;
+			int-gpio = <&msm_gpio 75 0x2008>;
+			lp55xxvdd-supply = <&pm8994_l19>;
+			I2CVDDP6-supply = <&pm8994_l10>;
+			pinctrl-names = "lp55xx_active","lp55xx_suspend";
+			pinctrl-0 = <&lp55xx_enble_active>;
+			pinctrl-1 = <&lp55xx_enble_suspend>;
+			clock-mode = /bits/ 8 <1>;
+			chan-name = "lp5523";
+
+			chan0 {
+					led-cur = /bits/ 8 <0x5>;
+					max-cur = /bits/ 8 <0x20>;
+			};
+
+			chan1 {
+					led-cur = /bits/ 8 <0x5>;
+					max-cur = /bits/ 8 <0x20>;
+			};
+
+			chan2 {
+					led-cur = /bits/ 8 <0x5>;
+					max-cur = /bits/ 8 <0x20>;
+			};
+
+			chan3 {
+					led-cur = /bits/ 8 <0x5>;
+					max-cur = /bits/ 8 <0x20>;
+			};
+	};
+};

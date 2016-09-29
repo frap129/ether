@@ -1,0 +1,25 @@
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		fih_powerkey {
+			qcom,pins = <&gp 65>;
+			qcom,num-grp-pins = <1>;
+			qcom,pin-func = <0>;
+			label = "fih_powerkey";
+			fih_powerkey: fih_powerkey {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+};
+
+&soc {
+	powerkey {
+		compatible = "fih, gpio_powerkey";
+		gpios = <&msm_gpio 65 0>;
+		pinctrl-names = "fih_powerkey";
+		pinctrl-0 = <&fih_powerkey>;
+		linux,name = "fih_powerkey_detect";
+	};
+};
+

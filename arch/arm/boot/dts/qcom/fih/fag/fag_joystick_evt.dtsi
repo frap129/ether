@@ -1,0 +1,88 @@
+&pm8994_mpps {
+			mpp@a100 {
+			reg = <0xa100 0x100>;
+			qcom,pin-num = <2>;
+			qcom,mode = <4>; // A-input
+			qcom,src-sel = <0>; //MPP Constant
+			qcom,ain-route = <1>; // QPNP_PIN_AIN_AMUX_CH6 = 1 for MPP2
+			qcom,master-en = <1>; //Enable MPP
+			};
+
+			mpp@a200 {
+			reg = <0xa200 0x100>;
+			qcom,pin-num = <3>;
+			status = "okay";
+			qcom,output-type = <0x0>;
+			qcom,vin-sel = <0x2>;
+			qcom,mode = <4>; // A-input
+			qcom,src-sel = <0>; //MPP Constant
+			qcom,ain-route = <2>; // QPNP_PIN_AIN_AMUX_CH7 = 2 for MPP3
+			qcom,master-en = <1>; //Enable MPP
+			};
+
+			mpp@a700 {
+			reg = <0xa700 0x100>;
+			qcom,pin-num = <8>;
+			status = "okay";
+			qcom,mode = <4>; // A-input
+			qcom,src-sel = <0>; //MPP Constant
+			qcom,ain-route = <3>; // QPNP_PIN_AIN_AMUX_CH8 = 3 for MPP8
+			qcom,master-en = <1>; //Enable MPP
+			};
+
+};
+
+&pm8994_vadc {
+			chan@11 {
+				label = "mpp2_adc";
+				reg = <0x11>; // channel for MPP2
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <0>; //Use 1:1 scaling to keep input 16 voltage with in Max voltage: 1.8V
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <4>;
+				qcom,fast-avg-setup = <2>;
+			};
+
+			chan@12 {
+				label = "mpp3_adc";
+				reg = <0x12>; // channel for MPP3
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <0>; //Use 1:1 scaling to keep input 16 voltage with in Max voltage: 1.8V
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <4>;
+				qcom,fast-avg-setup = <2>;
+			};
+
+			chan@17 {
+				label = "mpp8_adc";
+				reg = <0x17>; // channel for MPP8
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <0>; //Use 1:1 scaling to keep input 16 voltage with in Max voltage: 1.8V
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <4>;
+				qcom,fast-avg-setup = <2>;
+			};
+
+			chan@35 {
+				label = "AMUX3_adc";
+				reg = <0x35>; // channel for AMUX3
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <0>; //Use 1:1 scaling
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+};
+
+&spmi_bus {
+	qcom,pm8994@0 {
+			joystick{
+				compatible = "fih,joystick";
+				qcom,joystick-vadc = <&pm8994_vadc>;
+		};
+	};
+};

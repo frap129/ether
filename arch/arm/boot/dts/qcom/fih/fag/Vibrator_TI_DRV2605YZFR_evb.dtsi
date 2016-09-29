@@ -1,0 +1,103 @@
+&soc {
+	i2c@f9924000 {
+		ti,drv2605@5a {
+			status = "okay";
+			compatible = "ti,drv2605";
+			reg = <0x5a>;
+			vcc_i2c-supply = <&pm8994_lvs1>;
+			drv2605,en_gpio = <&msm_gpio 9 0>;
+			drv2605,pwm_gpio = <&pm8994_gpios 4 0>;
+			drv2605,mode_ctrl = <0>;
+
+			drv2605,default_level = <50>;
+			drv2605,max_timeout_ms = <15000>;
+			drv2605,vib_break_ms = <10>;
+			drv2605,pwm_channel = <0>;
+			drv2605,pwm_period_us = <32>;
+		};
+	};
+};
+
+&pm8994_gpios {
+/*for internal haptic/vibrator*/
+	gpio@c600 {
+		reg = <0xc600 0x100>;
+		qcom,pin-num = <7>;
+				/* vibrator pwm */
+		status = "okay";
+		qcom,mode = <1>; /* Digital output */
+		qcom,output-type = <0>; /* CMOS logic */
+		qcom,pull = <5>; /* QPNP_PIN_PULL_NO*/
+		qcom,vin-sel = <3>; /* QPNP_PIN_VIN3 */
+		qcom,out-strength = <3>;/* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>; /* Enable GPIO */
+	};
+
+/*for external haptic/vibrator*/
+	gpio@c300 {
+		reg = <0xc300 0x100>;
+		qcom,pin-num = <4>;
+				/* vibrator pwm */
+		status = "okay";
+		qcom,mode = <1>; /* Digital output */
+		qcom,output-type = <0>; /* CMOS logic */
+		qcom,pull = <5>; /* QPNP_PIN_PULL_NO*/
+		qcom,vin-sel = <3>; /* QPNP_PIN_VIN3 */
+		qcom,out-strength = <3>;/* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>; /* Enable GPIO */
+	};
+};
+
+&spmi_bus {
+	qcom,pm8994@1 {
+/*for internal haptic/vibrator*/
+		pwm@b300 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb300 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <2>;
+			qcom,supported-sizes = <6>, <7>, <9>;
+			qcom,ramp-index = <2>;
+			qcom,force-pwm-size = <9>;
+			qcom,period = <1000000>;
+			qcom,mode-select = <0>;
+			qcom,lpg-dtest-line = <3>;
+			qcom,dtest-output = <2>;
+			status = "okay";
+
+			qcom,pwm {
+				qcom,duty = <500000>;
+				label = "pwm";
+			};
+		};
+
+/*for external haptic/vibrator*/
+		pwm@b100 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb100 0x100>,
+			      <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <0>;
+			qcom,supported-sizes = <6>, <7>, <9>;
+			qcom,ramp-index = <0>;
+			qcom,force-pwm-size = <9>;
+			qcom,period = <1000000>;
+			qcom,mode-select = <0>;
+			qcom,lpg-dtest-line = <3>;
+			qcom,dtest-output = <2>;
+			status = "okay";
+
+			qcom,pwm {
+				qcom,duty = <500000>;
+				label = "pwm";
+			};
+		};
+	};
+};

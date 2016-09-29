@@ -1,0 +1,9 @@
+&soc {
+	i2c@f9928000  {
+		fih_ecompass@13  {
+			compatible = "bosch,bmm050";
+			reg = <0x13>;
+			vcc_i2c-supply = <&pm8994_lvs1>;
+		};
+	};
+};

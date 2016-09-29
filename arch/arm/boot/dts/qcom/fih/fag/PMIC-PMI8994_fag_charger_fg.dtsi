@@ -1,0 +1,38 @@
+/{
+	fag_batterydata: qcom,battery-data {
+		/include/ "batterydata-fag-mcnair-2500mah_temp.dtsi"
+	};
+};
+
+&soc {
+	fih_battery {
+		status = "okay";
+		compatible = "fih,battery";
+	};
+};
+
+&pmi8994_fg {
+	status = "okay";
+	qcom,warm-bat-decidegc = <450>;
+	qcom,cool-bat-decidegc = <100>;
+	qcom,hot-bat-decidegc = <550>;
+	qcom,cold-bat-decidegc = <0>;
+	qcom,thermal-coefficients= [10 86 CB 4A 03 36];
+	qcom,irq-volt-empty-mv = <3400>;
+	qcom,fg-cutoff-voltage-mv = <3400>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-soc-max = <100>;
+	qcom,fg-soc-min = <0>;
+};
+
+&pmi8994_charger {
+	status = "okay";
+	qcom,float-voltage-mv = <4350>;
+	qcom,fastchg-current-ma = <2500>;
+	qcom,resume-delta-mv = <100>;
+	qcom,charge-unknown-battery;
+	qcom,charging-timeout-mins = <0>;
+	qcom,precharging-timeout-mins = <0>;
+	qcom,usb-psy-ma = <2000>;
+};
+

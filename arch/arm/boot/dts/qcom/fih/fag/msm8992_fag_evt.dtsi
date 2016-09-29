@@ -1,0 +1,100 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "fih/fag/msm8992-memmap_fag_evt.dtsi"
+/include/ "fih/fag/msm8992_platform_fag_evt.dtsi"
+/include/ "fih/fag/fag_loadswitch_evt.dtsi"
+
+/* Power */
+/include/ "fih/fag/PMIC-PMI8994_fag_charger_fg.dtsi"
+
+/* Memory */
+
+/* Display / Touch Panel */
+
+/* Camera */
+
+/* Audio */
+/include/ "fih/fag/msm8992_sound_fag_evt.dtsi"
+
+/* Peripherals */
+/ {
+	aliases {
+			i2c1 = &i2c_1;
+	};
+};
+
+&soc{
+	tlmm_pinmux: pinctrl@fd510000 {
+		pmx_i2c_1 {
+			qcom,pins = <&gp 2>, <&gp 3>; /* SDA, SCL */
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <3>;
+			label = "pmx_i2c_1";
+
+			i2c_1_active: i2c_1_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+
+			i2c_1_sleep: i2c_1_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+	i2c_1: i2c@f9923000 {
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "ok";
+		reg-names = "qup_phys_addr";
+		reg = <0xf9923000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 95 0>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+
+		pinctrl-names = "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_1_active>;
+		pinctrl-1 = <&i2c_1_sleep>;
+		qcom,noise-rjct-scl = <0>;
+		qcom,noise-rjct-sda = <0>;
+		dmas = <&dma_blsp1 12 64 0x20000020 0x20>,
+			<&dma_blsp1 13 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <86>;
+	};
+};
+/include/ "fih/fag/KeyPad_TCA8418_evt.dtsi"
+/include/ "fih/fag/fag_joystick_evt.dtsi"
+/* Wireless */
+
+/* Sensor */
+/include/ "fih/fag/Ecompass_Bosch-BMM050_evt.dtsi"
+/include/ "fih/fag/Gsensor_Bosch-BMA2x2_evt.dtsi"
+/include/ "fih/fag/Gyro_Bosch-BMG160_evt.dtsi"
+/* LEDS */
+/include/ "fih/fag/Indicator-Led_EVERLIGHT_19-218_GHC-YQ1R2QY_3T_evb.dtsi"
+/* USB */
+
+/* VIBRATOR */
+/include/ "fih/fag/Vibrator_TI_DRV2605YZFR_evb.dtsi"
+
+/* POWER KEY*/
+/include/ "fih/fag/msm8992_power_key_fag_evt.dtsi"
+
+/* RESET KEY*/
+/include/ "fih/fag/msm8992_reset_key_fag_evt.dtsi"

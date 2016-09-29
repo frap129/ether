@@ -1,0 +1,10 @@
+&sound {
+	pinctrl-names = "sleep",
+			"auxpcm-active",
+			"mi2s-active",
+			"active";
+	pinctrl-0 = <&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
+	pinctrl-1 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
+	pinctrl-2 = <&sec_aux_pcm_sleep>, <&sec_aux_pcm_din_sleep>;
+	pinctrl-3 = <&sec_aux_pcm_active>, <&sec_aux_pcm_din_active>;
+};

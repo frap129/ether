@@ -1,0 +1,32 @@
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		bma2x2_en {
+			qcom,pins = <&gp 8>, <&gp 10>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <2>;
+			label = "bma2x2_irq";
+
+			bma2x2_en_active: bma2x2_en_active {
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+			bma2x2_en_sleep: bma2x2_en_sleep {
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
+	i2c@f9928000  {
+		fih_gsensor@11  {
+			compatible = "bosch,bma2x2";
+			reg = <0x11>;
+			vcc_i2c-supply = <&pm8994_lvs1>;
+			pinctrl-names = "bma2x2_active", "bma2x2_suspend";
+			pinctrl-0 = <&bma2x2_en_active>;
+			pinctrl-1 = <&bma2x2_en_sleep>;
+			bosch,irq1-gpio = <&msm_gpio 8 0x2008>;
+			bosch,irq2-gpio = <&msm_gpio 10 0x2008>;
+		};
+	};
+};

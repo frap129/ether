@@ -1,0 +1,28 @@
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		loadswitch_int_pin {
+		qcom,pins = <&gp 41>;
+		qcom,pin-func = <0>;
+		qcom,num-grp-pins = <1>;
+		label = "loadswitch-irq";
+		loadswitch_int_default: loadswitch_int_default {
+			drive-strength = <6>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+ };
+
+	loadswitch {
+		compatible = "load-switch";
+		pinctrl-names = "default";
+		pinctrl-0 = <&loadswitch_int_default>;
+		interrupt-parent = <&msm_gpio>;
+		interrupts = <41 0x3>;
+		vcc-supply = <&pm8994_s4>;
+		linux,gpio-int = <&msm_gpio 41 0x1>;
+		linux,wakeup;
+		linux,min-uv = <1650000>;
+		linux,max-uv = <3300000>;
+	};
+};

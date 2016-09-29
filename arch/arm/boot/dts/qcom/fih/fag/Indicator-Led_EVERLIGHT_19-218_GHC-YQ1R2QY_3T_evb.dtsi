@@ -1,0 +1,76 @@
+&pm8994_gpios {
+	gpio@c900 {
+		reg = <0xc900 0x100>;
+		qcom,pin-num = <10>;
+		/* indicator pwm */
+		status = "okay";
+		qcom,mode = <1>; /* Digital output */
+		qcom,output-type = <0>; /* CMOS logic */
+		qcom,pull = <5>; /* QPNP_PIN_PULL_NO*/
+		qcom,vin-sel = <3>; /* QPNP_PIN_VIN3 */
+		qcom,out-strength = <3>;/* QPNP_PIN_OUT_STRENGTH_HIGH */
+		qcom,src-sel = <2>; /* QPNP_PIN_SEL_FUNC_1 */
+		qcom,master-en = <1>; /* Enable GPIO */
+	};
+};
+
+&spmi_bus {
+	qcom,pm8994@1 {
+		pm8994_pwm_6: pwm@b600 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "qcom,qpnp-pwm";
+			reg = <0xb600 0x100>, <0xb042 0x7e>;
+			reg-names = "qpnp-lpg-channel-base", "qpnp-lpg-lut-base";
+			qcom,channel-id = <5>;
+			qcom,supported-sizes = <6>, <7>, <9>;
+			qcom,ramp-index = <5>;
+			qcom,period = <1000000>;
+			qcom,mode-select = <0>;
+			qcom,channel-owner = "RGB-led";
+			status = "okay";
+
+			qcom,pwm {
+				qcom,duty = <500000>;
+				label = "pwm";
+			};
+		};
+	};
+};
+
+&spmi_bus {
+	qcom,pm8994@0 {
+		qcom,leds@c900 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xc900 0x100>;
+			status = "okay";
+
+			qcom,rgb_pwm {
+				label = "rgb";
+				linux,name = "fag_indicator_led";
+				qcom,mode = "pwm";
+				qcom,pwm-us = <1000>;
+				pwms = <&pm8994_pwm_6 0 0>;
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				qcom,id = <3>;
+			};
+		};
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa3 {
+		status = "okay";
+		pm8994_l3: regulator-l3 {
+			qcom,consumer-supplies = "fag-mux-l3", "";
+		};
+	};
+
+	rpm-regulator-vsa1 {
+		status = "okay";
+		pm8994_lvs1: regulator-lvs1 {
+			qcom,consumer-supplies = "fag-mux-lvs1", "";
+		};
+	};
+};

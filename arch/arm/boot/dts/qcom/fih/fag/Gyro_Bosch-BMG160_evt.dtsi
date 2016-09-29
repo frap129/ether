@@ -1,0 +1,9 @@
+&soc {
+	i2c@f9928000  {
+		fih_gyro@68  {
+			compatible = "bosch,bmg160";
+			reg = <0x68>;
+			vcc_i2c-supply = <&pm8994_lvs1>;
+		};
+	};
+};

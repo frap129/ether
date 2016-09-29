@@ -1,0 +1,72 @@
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		keypad {
+			qcom,pins = <&gp 76>, <&gp 77>, <&gp 78>;
+			qcom,num-grp-pins = <3>;
+			qcom,pin-func = <0>;
+			label = "keypad";
+
+			keypad_active: keypad_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+
+			keypad_sleep: keypad_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+	};
+	i2c@f9923000 {
+		tca8418@34 {
+			status = "ok";
+			compatible = "ti,tca8418";
+			reg = <0x34>;
+			vcc_i2c-supply = <&pm8994_s4>;
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <77 0>, <76 0>;
+			pinctrl-names = "keypad_active", "keypad_sleep";
+			pinctrl-0 = <&keypad_active>;
+			pinctrl-1 = <&keypad_sleep>;
+			fih_keypad,irq = <&msm_gpio 77 0>;
+			fih_keypad_cad,irq = <&msm_gpio 76 0>;
+			fih_keypad,rst = <&msm_gpio 78 0>;
+			keypad,num-rows = <4>;
+			keypad,num-columns = <10>;
+			/* The 32-bit big endian cell is packed as: row << 24 | column << 16 | key-code */
+			linux,keymap = <    0x00000067 /* DPAD_UP */
+								0x0001006c /* DPAD_DOWN */
+								0x00020069 /* DPAD_LEFT */
+								0x0003006a /* DPAD_RIGHT */
+								//0x0104
+								0x010000ac /* HOME */
+								0x0101007f /* MENU */
+								0x0102001c /* ENTER */
+								0x0103009e /* BACK */
+								//0x0104
+								0x02050067 /* DPAD_UP */
+								0x0206006c /* DPAD_DOWN */
+								0x02070069 /* DPAD_LEFT */
+								0x0208006a /* DPAD_RIGHT */
+								0x0209007f /* MENU */
+								0x030500ac /* HOME */
+								0x03060130 /* BUTTON_A */
+								0x03070133 /* BUTTON_X */
+								0x03080131 /* BUTTON_B */
+								0x03090134 /* BUTTON_Y */
+								>;
+		};
+	};
+}; 
+
+&spmi_bus {
+	qcom,pm8994@0 {
+		qcom,power-on@800 {
+			qcom,pon_2 {
+				qcom,pon-type = <1>;
+				qcom,pull-up = <1>;
+			};
+		};
+	};
+};
+
