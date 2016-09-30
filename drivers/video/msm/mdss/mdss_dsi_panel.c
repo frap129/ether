@@ -25,11 +25,29 @@
 
 #include "mdss_dsi.h"
 
+/*FIH, Hubert, 20151021, modify the order of touch suspend before backlight for [NBQ-502] {*/
+#include <fih/hwid.h>
+/*} FIH, Hubert, 20151021, modify the order of touch suspend before backlight for [NBQ-502]*/
+
+/*FIH, Hubert, 20151030, fix touch no response when double press power key for [NBQ-1404] {*/
+#include <../drivers/input/touchscreen/synaptics_dsx/synaptics_dsx_core.h>
+/*} FIH, Hubert, 20151030, fix touch no response when double press power key for [NBQ-1404]*/
+
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 30
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
+
+/*FIH, Hubert, 20151020, modify the order of touch suspend before backlight for [NBQ-502] {*/
+extern struct device *synaptics_input_dev;
+extern int synaptics_rmi4_suspend(struct device *dev);
+/*} FIH, Hubert, 20151020, modify the order of touch suspend before backlight for [NBQ-502]*/
+
+/*FIH, Hubert, 20151030, fix touch no response when double press power key for [NBQ-1404] {*/
+extern struct synaptics_rmi4_data *syn_rmi4_data;
+extern int synaptics_rmi4_resume(struct device *dev);
+/*} FIH, Hubert, 20151030, fix touch no response when double press power key for [NBQ-1404]*/
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
 {
@@ -140,13 +158,86 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 
 	return 0;
 }
+static char panel_reg[2] = {0x0A, 0x00};
+static ssize_t panel_print_status(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rx_len = 0;
+	int i, lx = 0;
+	char panel_reg_buf[128] = {0x0};
+	char rx_buf[128] = {0x0};
+
+	mdss_dsi_panel_cmd_read(ctrl_pdata, panel_reg[0],
+		panel_reg[1], NULL, rx_buf, 1);
+
+	rx_len = ctrl_pdata->rx_len;
+
+	for (i = 0; i < rx_len; i++) {
+		lx += snprintf(panel_reg_buf + lx, sizeof(panel_reg_buf),
+			 "%s%02x", "", rx_buf[i]);
+	}
+    if(strcmp(panel_reg_buf,"9c")!=0){
+	    printk("BBox;%s:lx =%d,panel_reg_buf= %s,data[%d]=%x\n",
+		    __func__, lx, panel_reg_buf, i, rx_buf[i]);
+    }
+	return 0;
+}
+
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+static bool IsReadLCM = false;
+static bool IsnewLCM = true;
+static char panel_reg2[2] = {0xdb, 0x00}; //catch lcm version
+ssize_t panel_print_status2(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	int rx_len = 0;
+	int i, lx = 0;
+	char panel_reg_buf[128] = {0x0};
+	char rx_buf[128] = {0x0};
+
+	if (IsReadLCM)
+		return 0;
+
+	mdss_dsi_panel_cmd_read(ctrl_pdata, panel_reg2[0],
+		panel_reg2[1], NULL, rx_buf, 1);
+
+	rx_len = ctrl_pdata->rx_len;
+
+	for (i = 0; i < rx_len; i++) {
+		lx += snprintf(panel_reg_buf + lx, sizeof(panel_reg_buf),
+			"%s%02x", "", rx_buf[i]);
+	}
+	pr_info("panel_reg_buf:%s", panel_reg_buf);
+	if(strcmp(panel_reg_buf,"00")==0) // old lcm
+	{
+		pr_info("old panel\n");
+		IsnewLCM = false;
+	}
+	else if(strcmp(panel_reg_buf,"02")==0)
+	{
+		pr_info("new panel\n");
+		IsnewLCM = true;
+	}
+	else
+	{
+		pr_info("old panel\n");
+		IsnewLCM = false;
+	}
+
+	IsReadLCM = true;
+	return 0;
+}
+
+bool IsNewLCM(void)
+{
+	return IsnewLCM;
+}
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
 
 static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
-
+    int ret = 0;
 	pinfo = &(ctrl->panel_data.panel_info);
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
@@ -167,7 +258,10 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
-	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	ret = mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	if(ret < 0){
+	    printk("BBox::UEC;%d::%d\n", 0, 0);
+	}
 }
 
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
@@ -214,6 +308,20 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto disp_en_gpio_err;
 		}
 	}
+
+/*<<[NBQ-16] EricHsieh,Implement the OTM1926C CTC 5.2" panel */
+	if (gpio_is_valid(ctrl_pdata->disp_ldo_gpio)) {
+		rc = gpio_request(ctrl_pdata->disp_ldo_gpio,
+						"ldo_enable");
+		if (rc) {
+			pr_err("request ldo_en gpio failed, rc=%d\n",
+				       rc);
+			goto disp_ldo_gpio_err;
+		}
+	}
+	
+/*>>[NBQ-16] EricHsieh,END */
+	
 	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
 	if (rc) {
 		pr_err("request reset gpio failed, rc=%d\n",
@@ -248,9 +356,16 @@ rst_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		gpio_free(ctrl_pdata->disp_en_gpio);
 disp_en_gpio_err:
+/*<<[NBQ-16] EricHsieh,Implement the OTM1926C CTC 5.2" panel */
+	if (gpio_is_valid(ctrl_pdata->disp_ldo_gpio))
+		gpio_free(ctrl_pdata->disp_ldo_gpio);
+disp_ldo_gpio_err:
+/*>>[NBQ-16] EricHsieh,END*/
 	return rc;
 }
-
+//JYLee added to force lp11 before reset to match spec 20160409 {
+extern void mdss_dsi_force_lp11(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+//JYLee added to force lp11 before reset to match spec 20160409 }
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -270,6 +385,13 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			   __func__, __LINE__);
 	}
 
+/*<<[NBQ-16] EricHsieh,Implement the OTM1926C CTC 5.2" panel */	
+	if (!gpio_is_valid(ctrl_pdata->disp_ldo_gpio)) {
+		pr_debug("%s:%d, reset line not configured\n",
+			   __func__, __LINE__);
+	}
+/*>>[NBQ-16] EricHsieh,END */
+
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio)) {
 		pr_debug("%s:%d, reset line not configured\n",
 			   __func__, __LINE__);
@@ -283,11 +405,24 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		rc = mdss_dsi_request_gpios(ctrl_pdata);
 		if (rc) {
 			pr_err("gpio request failed\n");
+			printk("BBox::UEC;%d::%d\n", 0, 1);
 			return rc;
 		}
 		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+
+//JYLee added to force lp11 before reset to match spec 20160409 {
+			mdss_dsi_force_lp11(ctrl_pdata);
+//JYLee added to force lp11 before reset to match spec 20160409 }
+/*<<[NBQ-16] EricHsieh,Implement the OTM1926C CTC 5.2" panel */
+			if (gpio_is_valid(ctrl_pdata->disp_ldo_gpio))
+				gpio_set_value((ctrl_pdata->disp_ldo_gpio), 1);
+/*>>[NBQ-16] EricHsieh,END */
+
+//JYLee added to force lp11 before reset to match spec 20160409 {
+			usleep(5000);
+//JYLee added to force lp11 before reset to match spec 20160409 }
 
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
@@ -313,18 +448,30 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			pr_debug("%s: Reset panel done\n", __func__);
 		}
 	} else {
+		if (gpio_is_valid(ctrl_pdata->mode_gpio))
+			gpio_free(ctrl_pdata->mode_gpio);
+
 		if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 			gpio_set_value((ctrl_pdata->bklt_en_gpio), 0);
 			gpio_free(ctrl_pdata->bklt_en_gpio);
 		}
+
+		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		gpio_free(ctrl_pdata->rst_gpio);
+
+		usleep(5000); //JY added to match CTC power off spec 20151109
+/*<<[NBQ-16] EricHsieh,Implement the OTM1926C CTC 5.2" panel */
+		if (gpio_is_valid(ctrl_pdata->disp_ldo_gpio)) {
+			gpio_set_value((ctrl_pdata->disp_ldo_gpio), 0);
+			gpio_free(ctrl_pdata->disp_ldo_gpio);
+		}
+/*>>[NBQ-16] EricHsieh,END */
+
+		usleep(1000); //JY added to match CTC power off spec 20151109
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
-		gpio_free(ctrl_pdata->rst_gpio);
-		if (gpio_is_valid(ctrl_pdata->mode_gpio))
-			gpio_free(ctrl_pdata->mode_gpio);
 	}
 	return rc;
 }
@@ -595,6 +742,18 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	switch (ctrl_pdata->bklt_ctrl) {
 	case BL_WLED:
 		led_trigger_event(bl_led_trigger, bl_level);
+/*FIH, Hubert, 20151021, modify the order of touch suspend before backlight for [NBQ-502] {*/
+		if((fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			|| (fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_VZW))
+		{
+			if ((synaptics_input_dev != NULL) && (bl_level == 0))
+				synaptics_rmi4_suspend(synaptics_input_dev);
+//FIH, Hubert, 20151030, fix touch no response when double press power key for [NBQ-1404] {
+			else if ((synaptics_input_dev != NULL) && (bl_level != 0) && (syn_rmi4_data->suspended == true))
+				synaptics_rmi4_resume(synaptics_input_dev);
+//} FIH, Hubert, 20151030, fix touch no response when double press power key for [NBQ-1404]
+		}
+/*} FIH, Hubert, 20151021, modify the order of touch suspend before backlight for [NBQ-502]*/
 		break;
 	case BL_PWM:
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
@@ -628,6 +787,9 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 			__func__);
 		break;
 	}
+/*FIH, Hubert, 20151020, modify the order of touch suspend before backlight for [NBQ-502] {*/
+	pr_debug("LCM_backlight_bl_level:%d\n", bl_level);
+/*} FIH, Hubert, 20151020, modify the order of touch suspend before backlight for [NBQ-502]*/
 }
 
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
@@ -659,8 +821,17 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		on_cmds = &ctrl->post_dms_on_cmds;
 
 	if (on_cmds->cmd_cnt)
+	{
+		mdss_dsi_panel_bl_ctrl(pdata, 0); //JY added to fix NBQM-435 20151123
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
-
+	}
+	//Buda added for BBS log
+	if (1) panel_print_status(ctrl);
+	//Buda added for recovery backlight
+	if(strstr(saved_command_line, "androidboot.mode=1")!=NULL)
+	{
+		mdss_dsi_panel_bl_ctrl(pdata, 102);
+	}	
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
 	pr_debug("%s:-\n", __func__);
@@ -1967,6 +2138,22 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
+	// KuroCHChung@fih-foxconn.com CABC Porting 20151029 {
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_off_cmds,
+		"qcom,mdss-dsi-cabc-off-command", "qcom,mdss-dsi-cabc-off-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_ui_cmds,
+		"qcom,mdss-dsi-cabc-ui-command", "qcom,mdss-dsi-cabc-ui-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_still_cmds,
+		"qcom,mdss-dsi-cabc-still-command", "qcom,mdss-dsi-cabc-still-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_moving_cmds,
+		"qcom,mdss-dsi-cabc-moving-command", "qcom,mdss-dsi-cabc-moving-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_on_cmds,
+		"qcom,mdss-dsi-ce-on-command", "qcom,mdss-dsi-ce-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_off_cmds,
+		"qcom,mdss-dsi-ce-off-command", "qcom,mdss-dsi-ce-off-command-state");
+	// } KuroCHChung@fih-foxconn.com CABC Porting 20151029
+
 	return 0;
 
 error:
@@ -1996,6 +2183,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 						__func__, __LINE__);
 	} else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
+		printk("BBox;%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 	}
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
@@ -2018,6 +2206,69 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
+
+	return 0;
+}
+
+int mdss_dsi_panel_cabc_ctrl(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+							int cabc_status)
+{
+
+	if (!(ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT)) {
+		pr_err("%s: panel not init yet, not allow to set CABC command!\n", __func__);
+		return -EBUSY;
+	}
+
+	switch (cabc_status)
+	{
+		case CABC_OFF:
+			mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->cabc_off_cmds, CMD_REQ_COMMIT);
+			break;
+		case CABC_UI:
+			mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->cabc_ui_cmds, CMD_REQ_COMMIT);
+			break;
+		case CABC_STILL:
+			mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->cabc_still_cmds, CMD_REQ_COMMIT);
+			break;
+		case CABC_MOVING:
+			mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->cabc_moving_cmds, CMD_REQ_COMMIT);
+			break;
+		default:
+			pr_err("%s: Unknown cabc_status configuration\n", __func__);
+			return -EINVAL;
+			break;
+	}
+
+	return 0;
+}
+
+int mdss_dsi_panel_ce_onoff(struct mdss_dsi_ctrl_pdata *ctrl_pdata, unsigned long enable)
+{
+	if (!(ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT))
+	{
+		pr_err("%s, panel not init yet, not allow to set CE command!\n", __func__);
+		return -EBUSY;
+	}
+	else
+	{
+		pr_debug("%s, panel already init, allow to set CE command!\n", __func__);
+	}
+
+	if (enable == 1)
+	{
+		pr_err("%s, send enable = 1 command!\n", __func__);
+		mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->ce_on_cmds, CMD_REQ_COMMIT);
+	}
+	else if (enable == 0)
+	{
+		pr_err("%s, send enable = 0 command!\n", __func__);
+		mdss_dsi_panel_cmds_send(ctrl_pdata, &ctrl_pdata->ce_off_cmds, CMD_REQ_COMMIT);
+	}
+	else
+	{
+		pr_err("%s, Invlid input parameter\n", __func__);
+		return -EINVAL;
+	}
 
 	return 0;
 }

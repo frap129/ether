@@ -714,6 +714,8 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 	if (rc <= 0) {
 		pr_err("cmd kickoff timed out (%d) ctl=%d, cnt=%d\n",
 			rc, ctl->num, ctx->pp_timeout_report_cnt);
+		printk("BBox;cmd kickoff timed out (%d) ctl=%d, cnt=%d\n",
+			rc, ctl->num, ctx->pp_timeout_report_cnt);
 		if (ctx->pp_timeout_report_cnt == 0) {
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
 				"dsi1_ctrl", "dsi1_phy", "panic");
