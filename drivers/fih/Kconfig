@@ -1,0 +1,6 @@
+menu "Device Drivers for FIH"
+
+source "drivers/fih/fpcfingerprint_tee/Kconfig"
+
+
+endmenu
