@@ -26,7 +26,31 @@
 #include <linux/platform_device.h>
 #include <linux/input/synaptics_dsx_v2.h>
 #include "synaptics_dsx_core.h"
+#include <fih/hwid.h>
 
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+bool LCM_version= true;
+extern bool IsNewLCM(void);
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
+
+/*FIH, Hubert, 20151006, the information of touch firmware version {*/
+//change touch firmware version immediately after upgrade touch firmware
+extern unsigned int get_device_config_id;
+extern char fih_touch_fw[32];
+extern char fih_touch[32];
+/*} FIH, Hubert, 20151006, the information of touch firmware version*/
+
+/*FIH, Hubert, 20160302, after upgrade TP FW, to reinit f54 to solve virtual file (test) not created {*/
+extern void synaptics_rmi4_f54_reset(struct synaptics_rmi4_data *rmi4_data);
+/*} FIH, Hubert, 20160302, after upgrade TP FW, to reinit f54 to solve virtual file (test) not created*/
+
+/*  NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+/*  NBQ - EricHsieh - [06-41] - [Touch] Update Synaptics touch firmware */
+/*  NBQ - AlbertWu - [NBQ-45] - [Touch] Synaptics touch driver porting ,touch can work. */
+#define DO_STARTUP_FW_UPDATE
+/* end  NBQ - AlbertWu - [NBQ-45] */
+/* end  NBQ - EricHsieh - [06-41] */
+/* end  NBQ - EricHsieh - [06-23] */
 #define STARTUP_FW_UPDATE_DELAY_MS 1000 /* ms */
 #define FORCE_UPDATE false
 #define DO_LOCKDOWN false
@@ -102,6 +126,16 @@ static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
 
 static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
+
+/*FIH, Hubert, 20151016, add for apk to do touch firmware upgrade {*/
+static ssize_t fwu_sysfs_appupgrade_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+/*} FIH, Hubert, 20151016, add for apk to do touch firmware upgrade*/
+
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+static ssize_t fwu_sysfs_lcm_version_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
 
 static ssize_t fwu_sysfs_write_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
@@ -278,6 +312,9 @@ struct synaptics_rmi4_fwu_handle {
 	const unsigned char *firmware_data;
 	const unsigned char *config_data;
 	const unsigned char *lockdown_data;
+/*  NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+	struct workqueue_struct *fwu_workqueue;
+/* end  NBQ - EricHsieh - [06-23] */
 	struct delayed_work fwu_work;
 	struct synaptics_rmi4_fn_desc f34_fd;
 	struct synaptics_rmi4_data *rmi4_data;
@@ -298,7 +335,10 @@ static struct device_attribute attrs[] = {
 	__ATTR(force_update_fw, S_IWUSR | S_IWGRP,
 			NULL,
 			fwu_sysfs_force_reflash_store),
-	__ATTR(update_fw, S_IWUSR | S_IWGRP,
+/*  NBQ - AlbertWu - [NBQ-45] - [Touch] Synaptics touch driver porting ,touch can work. */
+//	__ATTR(update_fw, S_IWUSR | S_IWGRP,
+	__ATTR(doreflash, S_IWUSR | S_IWGRP,
+/* end  NBQ - AlbertWu - [NBQ-45] */
 			NULL,
 			fwu_sysfs_do_reflash_store),
 	__ATTR(writeconfig, S_IWUSR | S_IWGRP,
@@ -340,6 +380,14 @@ static struct device_attribute attrs[] = {
 	__ATTR(package_id, S_IRUGO,
 			fwu_sysfs_package_id_show,
 			synaptics_rmi4_store_error),
+//FIH, Hubert, 20151016, add for apk to do touch firmware upgrade
+	__ATTR(appupgrade, (S_IRUGO|S_IWUSR),
+			NULL,
+			fwu_sysfs_appupgrade_store),
+//FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade
+	__ATTR(lcm_version, (S_IRUGO|S_IWUSR),
+			fwu_sysfs_lcm_version_show,
+			NULL),
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
@@ -1507,7 +1555,93 @@ int synaptics_dsx_fw_updater(unsigned char *fw_data)
 	return retval;
 }
 EXPORT_SYMBOL(synaptics_dsx_fw_updater);
+/*  NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+#ifdef DO_STARTUP_FW_UPDATE
+static void fwu_startup_fw_update_work(struct work_struct *work)
+{
+	//synaptics_dsx_fw_updater(NULL);
+	int retval;
+	unsigned int input = NORMAL;
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
+	int retval_reg;
+	unsigned char get_config_id[4];
+
+	retval_reg = synaptics_rmi4_reg_read(rmi4_data,rmi4_data->f34_ctrl_base_addr,get_config_id,sizeof(get_config_id));
+	if (retval_reg < 0)
+	{
+		pr_debug("%s: Failed to read device config ID\n", __func__);
+	}
+	get_device_config_id = get_config_id[0]<<24 | get_config_id[1]<<16 | get_config_id[2]<<8 | get_config_id[3];
+	pr_info("get_device_config_id_x:%x\n", get_device_config_id);
+	if ((fih_hwid_fetch(FIH_HWID_REV) >= FIH_REV_DVT2) &&
+		(get_device_config_id < 0xDD000037) )
+	{
+		pr_info("Start_run!\n");
+		if (input & LOCKDOWN) {
+			fwu->do_lockdown = true;
+			input &= ~LOCKDOWN;
+		}
+
+		if ((input != NORMAL) && (input != FORCE)) {
+			retval = -EINVAL;
+			goto exit;
+		}
+
+		if (input == FORCE)
+			fwu->force_update = true;
+
+		retval = synaptics_dsx_fw_updater(fwu->ext_data_source);
+		if (retval < 0) {
+			dev_err(rmi4_data->pdev->dev.parent,
+					"%s: Failed to do reflash\n",
+					__func__);
+			goto exit;
+		}
+
+/*FIH, Hubert, 20151006, the information of touch firmware version {*/
+//change touch firmware version immediately after upgrade touch firmware
+		retval_reg = synaptics_rmi4_reg_read(rmi4_data,rmi4_data->f34_ctrl_base_addr,get_config_id,sizeof(get_config_id));
+		if (retval_reg < 0)
+		{
+			pr_debug("%s: Failed to read device config ID\n", __func__);
+		}
+		get_device_config_id = get_config_id[0]<<24 | get_config_id[1]<<16 | get_config_id[2]<<8 | get_config_id[3];
+		memset(fih_touch_fw, 0, sizeof(fih_touch_fw));
+		snprintf(fih_touch_fw, PAGE_SIZE, "Synaptics-V%.4X",get_device_config_id);
+		pr_info("F@TOUCH %s the new firmware version : %s\n", __func__,fih_touch_fw);
+		strcpy(fih_touch, fih_touch_fw);
+/*} FIH, Hubert, 20151006, the information of touch firmware version*/
+
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(retval_reg < 0)
+		{
+			printk("BBox::UEC; 7::4\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
+exit:
+	kfree(fwu->ext_data_source);
+	fwu->ext_data_source = NULL;
+	fwu->force_update = FORCE_UPDATE;
+	fwu->do_lockdown = DO_LOCKDOWN;
+
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	if(retval < 0)
+	{
+		printk("BBox::UEC; 7::5\n");
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
+/*FIH, Hubert, 20160302, after upgrade TP FW, to reinit f54 to solve virtual file (test) not created {*/
+	synaptics_rmi4_f54_reset(rmi4_data);
+/*} FIH, Hubert, 20160302, after upgrade TP FW, to reinit f54 to solve virtual file (test) not created */
+
+	}
+	return;
+}
+#endif
+/* end  NBQ - EricHsieh - [06-23] */
 static ssize_t fwu_sysfs_show_image(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count)
@@ -1584,10 +1718,31 @@ static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 	unsigned int input;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
+/*FIH, Hubert, 20151006, the information of touch firmware version {*/
+//change touch firmware version immediately after upgrade touch firmware
+	int retval_reg;
+	unsigned char get_config_id[4];
+/*} FIH, Hubert, 20151006, the information of touch firmware version*/
+
 	if (sscanf(buf, "%u", &input) != 1) {
 		retval = -EINVAL;
 		goto exit;
 	}
+
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+	LCM_version = IsNewLCM();
+	pr_info("%s_Is_new_lcm_version:%d\n", __func__, LCM_version);
+	if (LCM_version == true)
+	{
+		sprintf(fwu->image_name, "TP_Firmware_nbq_ebbg.img");
+		pr_info("choice_%s\n", fwu->image_name);
+	}
+	else
+	{
+		sprintf(fwu->image_name, "TP_Firmware_nbq_ebbg_V29.img");
+		pr_info("choice_%s\n", fwu->image_name);
+	}
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
 
 	if (input & LOCKDOWN) {
 		fwu->do_lockdown = true;
@@ -1610,6 +1765,27 @@ static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		goto exit;
 	}
 
+/*FIH, Hubert, 20151006, the information of touch firmware version {*/
+//change touch firmware version immediately after upgrade touch firmware
+	retval_reg = synaptics_rmi4_reg_read(rmi4_data,rmi4_data->f34_ctrl_base_addr,get_config_id,sizeof(get_config_id));
+	if (retval_reg < 0)
+	{
+		pr_debug("%s: Failed to read device config ID\n", __func__);
+	}
+	get_device_config_id = get_config_id[0]<<24 | get_config_id[1]<<16 | get_config_id[2]<<8 | get_config_id[3];
+	memset(fih_touch_fw, 0, sizeof(fih_touch_fw));
+	snprintf(fih_touch_fw, PAGE_SIZE, "Synaptics-V%.4X",get_device_config_id);
+	pr_info("F@TOUCH %s the new firmware version : %s\n", __func__,fih_touch_fw);
+	strcpy(fih_touch, fih_touch_fw);
+/*} FIH, Hubert, 20151006, the information of touch firmware version*/
+
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	if(retval_reg < 0)
+	{
+		printk("BBox::UEC; 7::4\n");
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
 	retval = count;
 
 exit:
@@ -1617,8 +1793,104 @@ exit:
 	fwu->ext_data_source = NULL;
 	fwu->force_update = FORCE_UPDATE;
 	fwu->do_lockdown = DO_LOCKDOWN;
+
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	if(retval < 0)
+	{
+		printk("BBox::UEC; 7::5\n");
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
 	return retval;
 }
+
+/*FIH, Hubert, 20151016, add for apk to do touch firmware upgrade {*/
+static ssize_t fwu_sysfs_appupgrade_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int retval;
+	unsigned int input = FORCE;
+	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
+
+/*FIH, Hubert, 20151006, the information of touch firmware version {*/
+//change touch firmware version immediately after upgrade touch firmware
+	int retval_reg;
+	unsigned char get_config_id[4];
+/*} FIH, Hubert, 20151006, the information of touch firmware version*/
+
+	sprintf(fwu->image_name, "%s", buf);
+		fwu->image_name[count-1] = '\0';
+
+	if (input & LOCKDOWN) {
+		fwu->do_lockdown = true;
+		input &= ~LOCKDOWN;
+	}
+
+	if ((input != NORMAL) && (input != FORCE)) {
+		retval = -EINVAL;
+		goto exit;
+	}
+
+	if (input == FORCE)
+		fwu->force_update = true;
+
+	retval = synaptics_dsx_fw_updater(fwu->ext_data_source);
+	if (retval < 0) {
+		dev_err(rmi4_data->pdev->dev.parent,
+				"%s: Failed to do reflash\n",
+				__func__);
+		goto exit;
+	}
+
+/*FIH, Hubert, 20151006, the information of touch firmware version {*/
+//change touch firmware version immediately after upgrade touch firmware
+	retval_reg = synaptics_rmi4_reg_read(rmi4_data,rmi4_data->f34_ctrl_base_addr,get_config_id,sizeof(get_config_id));
+	if (retval_reg < 0)
+	{
+		pr_debug("%s: Failed to read device config ID\n", __func__);
+	}
+	get_device_config_id = get_config_id[0]<<24 | get_config_id[1]<<16 | get_config_id[2]<<8 | get_config_id[3];
+	memset(fih_touch_fw, 0, sizeof(fih_touch_fw));
+	snprintf(fih_touch_fw, PAGE_SIZE, "Synaptics-V%.4X",get_device_config_id);
+	pr_info("F@TOUCH %s the new firmware version : %s\n", __func__,fih_touch_fw);
+	strcpy(fih_touch, fih_touch_fw);
+/*} FIH, Hubert, 20151006, the information of touch firmware version*/
+
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	if(retval_reg < 0)
+	{
+		printk("BBox::UEC; 7::4\n");
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
+	retval = count;
+
+exit:
+	kfree(fwu->ext_data_source);
+	fwu->ext_data_source = NULL;
+	fwu->force_update = FORCE_UPDATE;
+	fwu->do_lockdown = DO_LOCKDOWN;
+
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	if(retval < 0)
+	{
+		printk("BBox::UEC; 7::5\n");
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
+	return retval;
+}
+/*} FIH, Hubert, 20151016, add for apk to do touch firmware upgrade*/
+
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+static ssize_t fwu_sysfs_lcm_version_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	LCM_version = IsNewLCM();
+	pr_info("%s_Is_new_lcm_version:%d\n", __func__, LCM_version);
+	return snprintf(buf, PAGE_SIZE, "%d\n", LCM_version);
+}
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
 
 static ssize_t fwu_sysfs_write_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1779,10 +2051,10 @@ static ssize_t fwu_sysfs_config_id_show(struct device *dev,
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 	unsigned char config_id[4];
 	int retval;
-
+/*  NBQ - EricHsieh - [06-41] - [Touch] Update Synaptics touch firmware */
 	/* device config id */
 	retval = synaptics_rmi4_reg_read(rmi4_data,
-				fwu->f34_fd.ctrl_base_addr,
+				76,//fwu->f34_fd.ctrl_base_addr,
 				config_id,
 				sizeof(config_id));
 	if (retval < 0) {
@@ -1791,9 +2063,11 @@ static ssize_t fwu_sysfs_config_id_show(struct device *dev,
 				__func__);
 		return retval;
 	}
-
-	return snprintf(buf, PAGE_SIZE, "%d.%d.%d.%d\n",
+/*  NBQ - EricHsieh - [06-266] - [Titan_HLR][HLR-516]Variant - Touch screen tunings differiate between different HW builds */
+	return snprintf(buf, PAGE_SIZE, "%c%c%c%c\n",
 		config_id[0], config_id[1], config_id[2], config_id[3]);
+/* end  NBQ - EricHsieh - [06-266] */
+/* end  NBQ - EricHsieh - [06-41] */
 }
 
 static ssize_t fwu_sysfs_package_id_show(struct device *dev,
@@ -1849,7 +2123,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	fwu->image_name = rmi4_data->fw_name;
-
+	pr_info("synaptics_rmi4_fwu_init_TP_FW:%s\n", fwu->image_name);
 	fwu->rmi4_data = rmi4_data;
 
 	retval = synaptics_rmi4_reg_read(rmi4_data,
@@ -1914,6 +2188,15 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
+/*  NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+#ifdef DO_STARTUP_FW_UPDATE
+	fwu->fwu_workqueue = create_singlethread_workqueue("fwu_workqueue");
+	INIT_DELAYED_WORK(&fwu->fwu_work, fwu_startup_fw_update_work);
+	queue_delayed_work(fwu->fwu_workqueue,
+			&fwu->fwu_work,
+			msecs_to_jiffies(STARTUP_FW_UPDATE_DELAY_MS));
+#endif
+/* end  NBQ - EricHsieh - [06-23] */
 	return 0;
 
 exit_remove_attrs:
