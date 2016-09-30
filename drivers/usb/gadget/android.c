@@ -92,11 +92,16 @@ static const char longname[] = "Gadget Android";
 #define PRODUCT_ID		0x0001
 
 #define ANDROID_DEVICE_NODE_NAME_LENGTH 11
+
+#define BBOX_USB_TRANS_FAIL do {printk("BBox;%s: Transfer failure\n", __func__); printk("BBox::UEC;3::0\n");} while (0);
+#define BBOX_USB_CONF_FAIL do {printk("BBox;%s: Configurance Fail\n", __func__); printk("BBox::UEC;3::2\n");} while (0);
 /* f_midi configuration */
 #define MIDI_INPUT_PORTS    1
 #define MIDI_OUTPUT_PORTS   1
 #define MIDI_BUFFER_SIZE    1024
 #define MIDI_QUEUE_LENGTH   32
+
+#define FIH_CHARGER_DETECT
 
 struct android_usb_function {
 	char *name;
@@ -394,6 +399,9 @@ enum android_device_state {
 	USB_RESUMED
 };
 
+#ifdef FIH_CHARGER_DETECT
+extern void set_charger_type(int);
+#endif
 static void android_work(struct work_struct *data)
 {
 	struct android_dev *dev = container_of(data, struct android_dev, work);
@@ -472,6 +480,10 @@ static void android_work(struct work_struct *data)
 			last_uevent = next_state;
 		}
 		pr_info("%s: sent uevent %s\n", __func__, uevent_envp[0]);
+#ifdef FIH_CHARGER_DETECT
+		if(uevent_envp == configured)
+			set_charger_type(4); // 4: POWER_SUPPLY_TYPE_USB
+#endif
 	} else {
 		pr_info("%s: did not send uevent (%d %d %p)\n", __func__,
 			 dev->connected, dev->sw_connected, cdev->config);
@@ -493,6 +505,7 @@ static int android_enable(struct android_dev *dev)
 			err = usb_add_config(cdev, &conf->usb_config,
 						android_bind_config);
 			if (err < 0) {
+				BBOX_USB_CONF_FAIL;
 				pr_err("%s: usb_add_config failed : err: %d\n",
 						__func__, err);
 				dev->disable_depth++;
@@ -2436,8 +2449,11 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	}
 
 	config->fsg.nluns = 1;
-	snprintf(name[0], MAX_LUN_NAME, "lun");
-	config->fsg.luns[0].removable = 1;
+
+	config->fsg.luns[0].cdrom = 1;
+	config->fsg.luns[0].ro = 1;
+	config->fsg.luns[0].removable = 0;
+	snprintf(name[0], MAX_LUN_NAME, "lun0");
 
 	if (dev->pdata && dev->pdata->cdrom) {
 		config->fsg.luns[config->fsg.nluns].cdrom = 1;
@@ -3315,6 +3331,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			msleep(100);
 		err = android_enable(dev);
 		if (err < 0) {
+			BBOX_USB_TRANS_FAIL;
 			pr_err("%s: android_enable failed\n", __func__);
 			dev->connected = 0;
 			dev->enabled = false;
@@ -4101,3 +4118,9 @@ static void __exit cleanup(void)
 	platform_driver_unregister(&android_platform_driver);
 }
 module_exit(cleanup);
+
+int android_usb_product_id(void)
+{
+	return device_desc.idProduct;
+}
+EXPORT_SYMBOL(android_usb_product_id);

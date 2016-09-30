@@ -56,5 +56,7 @@ obj-$(CONFIG_USB_MUSB_HDRC)	+= musb/
 obj-$(CONFIG_USB_CHIPIDEA)	+= chipidea/
 obj-$(CONFIG_USB_RENESAS_USBHS)	+= renesas_usbhs/
 obj-$(CONFIG_USB_GADGET)	+= gadget/
-
+#/* NBQ - AlbertWu - [NBQM-623] - [USB] Add HD3SS3220 USB type C driver in Android M OS. */
+obj-$(CONFIG_HD3SS3220_SUPPORT) 	+= hd3ss3220/
+#/* end  NBQ - AlbertWu - [NBQM-623] */
 obj-$(CONFIG_USB_COMMON)	+= usb-common.o
