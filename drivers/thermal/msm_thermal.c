@@ -63,6 +63,17 @@
 #define CPU_BUF_SIZE 64
 #define CPU_DEVICE "cpu%d"
 
+#define BBOX_CPU_OVER_TEMP do {printk("BBox;%s: CPU over temp reached\n", __func__); printk("BBox::UPD;40::SHDN_CPU_OVHEAT\n");} while (0);
+#define BBOX_CPU_HIGH_TEMP do {printk("BBox;%s: CPU high temp reached\n", __func__); printk("BBox::UPD;71::THERMAL\n");} while (0);
+#define BBOX_DIE_TEMP do {printk("BBox;%s: Die temp alarm\n", __func__); printk("BBox::UEC;17::3\n");} while (0);
+#define BBOX_GET_TEMP_FAIL do {printk("BBox;%s: Get temperature fail\n", __func__); printk("BBox::UEC;22::0\n");} while (0);
+#define BBOX_UPDATE_POLICY_FAIL do {printk("BBox;%s: Update policy error\n", __func__); printk("BBox::UEC;22::1\n");} while (0);
+#define BBOX_GET_CPU_FREQ_FAIL do {printk("BBox;%s: Get cpufreq table fail\n", __func__); printk("BBox::UEC;22::2\n");} while (0);
+#define BBOX_SET_MODE_FAIL do {printk("BBox;%s: Tsens set mode error\n", __func__); printk("BBox::UEC;22::3\n");} while (0);
+
+static unsigned long last_print_log_22_1_time = -1;
+static unsigned long last_print_log_71_time = -1;
+
 #define THERM_CREATE_DEBUGFS_DIR(_node, _name, _parent, _ret) \
 	do { \
 		_node = debugfs_create_dir(_name, _parent); \
@@ -807,9 +818,11 @@ static int  msm_thermal_cpufreq_callback(struct notifier_block *nfb,
 		cpufreq_verify_within_limits(policy, min_freq_req,
 			max_freq_req);
 
-		if (max_freq_req < min_freq_req)
+		if (max_freq_req < min_freq_req) {
+			BBOX_GET_CPU_FREQ_FAIL;
 			pr_err("Invalid frequency request Max:%u Min:%u\n",
 				max_freq_req, min_freq_req);
+		}
 		break;
 
 	case CPUFREQ_CREATE_POLICY:
@@ -854,9 +867,16 @@ static void update_cpu_freq(int cpu)
 		trace_thermal_post_frequency_mit(cpu,
 			cpufreq_quick_get_max(cpu),
 			cpus[cpu].limited_min_freq);
-		if (ret)
-			pr_err("Unable to update policy for cpu:%d. err:%d\n",
-				cpu, ret);
+		if (ret) {
+			unsigned long during_time;
+			during_time = get_seconds() - last_print_log_22_1_time;
+			if (last_print_log_22_1_time == -1 || during_time >= 2) {
+				last_print_log_22_1_time = get_seconds();
+				BBOX_UPDATE_POLICY_FAIL;
+				pr_err("Unable to update policy for cpu:%d. err:%d\n",
+					cpu, ret);
+			}
+		}
 	}
 }
 
@@ -1435,6 +1455,18 @@ static int update_cpu_min_freq_all(uint32_t min)
 static int vdd_restriction_apply_freq(struct rail *r, int level)
 {
 	int ret = 0;
+	struct timespec ts;
+
+	do_posix_clock_monotonic_gettime(&ts);
+	monotonic_to_bootbased(&ts);
+	if(ts.tv_sec > 60) {
+		unsigned long during_time;
+		during_time = get_seconds() - last_print_log_71_time;
+		if (last_print_log_71_time == -1 || during_time >= 1) {
+			last_print_log_71_time = get_seconds();
+			BBOX_CPU_HIGH_TEMP;
+		}
+	}
 
 	if (level == r->curr_level)
 		return ret;
@@ -1507,6 +1539,7 @@ static int psm_set_mode_all(int mode)
 		if (psm_rails[i].mode != mode) {
 			ret = rpm_regulator_set_mode(psm_rails[i].reg, mode);
 			if (ret) {
+				BBOX_SET_MODE_FAIL;
 				pr_err("Cannot set mode:%d for %s. err:%d",
 					mode, psm_rails[i].name, ret);
 				fail_cnt++;
@@ -2095,6 +2128,7 @@ static int therm_get_temp(uint32_t id, enum sensor_id_type type, long *temp)
 		tsens_dev.sensor_num = id;
 		ret = tsens_get_temp(&tsens_dev, temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d\n",
 				tsens_dev.sensor_num);
 			goto get_temp_exit;
@@ -2248,6 +2282,7 @@ static int do_vdd_mx(void)
 			thresh[MSM_VDD_MX_RESTRICTION].thresh_list[i].id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d, err:%d\n",
 				thresh[MSM_VDD_MX_RESTRICTION].thresh_list[i].
 					sensor_id, ret);
@@ -2324,6 +2359,8 @@ static void msm_thermal_bite(int tsens_id, long temp)
 
 	pr_err("TSENS:%d reached temperature:%ld. System reset\n",
 		tsens_id, temp);
+	BBOX_CPU_OVER_TEMP;
+	BBOX_DIE_TEMP;
 	if (!is_scm_armv8()) {
 		scm_call_atomic1(SCM_SVC_BOOT, THERM_SECURE_BITE_CMD, 0);
 	} else {
@@ -2348,6 +2385,7 @@ static int do_therm_reset(void)
 			thresh[MSM_THERM_RESET].thresh_list[i].id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 			thresh[MSM_THERM_RESET].thresh_list[i].sensor_id,
 			ret);
@@ -2379,9 +2417,11 @@ static void therm_reset_notify(struct therm_threshold *thresh_data)
 	case THERMAL_TRIP_CONFIGURABLE_HI:
 		ret = therm_get_temp(thresh_data->sensor_id,
 				thresh_data->id_type, &temp);
-		if (ret)
+		if (ret) {
+			BBOX_GET_TEMP_FAIL
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 				thresh_data->sensor_id, ret);
+		}
 		msm_thermal_bite(tsens_id_map[thresh_data->sensor_id],
 					temp);
 		break;
@@ -2612,6 +2652,7 @@ static int do_gfx_phase_cond(void)
 			thresh[MSM_GFX_PHASE_CTRL_WARM].thresh_list->id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 			thresh[MSM_GFX_PHASE_CTRL_WARM].thresh_list->sensor_id,
 			ret);
@@ -2623,6 +2664,7 @@ static int do_gfx_phase_cond(void)
 			thresh[MSM_GFX_PHASE_CTRL_HOT].thresh_list->id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 			thresh[MSM_GFX_PHASE_CTRL_HOT].thresh_list->sensor_id,
 			ret);
@@ -2689,6 +2731,7 @@ static int do_cx_phase_cond(void)
 			thresh[MSM_CX_PHASE_CTRL_HOT].thresh_list[i].id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 			thresh[MSM_CX_PHASE_CTRL_HOT].thresh_list[i].sensor_id,
 			ret);
@@ -2746,6 +2789,7 @@ static int do_ocr(void)
 			thresh[MSM_OCR].thresh_list[i].id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor %d. err:%d\n",
 			thresh[MSM_OCR].thresh_list[i].sensor_id,
 			ret);
@@ -2816,6 +2860,7 @@ static int do_vdd_restriction(void)
 			thresh[MSM_VDD_RESTRICTION].thresh_list[i].id_type,
 			&temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 			thresh[MSM_VDD_RESTRICTION].thresh_list[i].sensor_id,
 			ret);
@@ -2862,6 +2907,7 @@ static int do_psm(void)
 	for (i = 0; i < max_tsens_num; i++) {
 		ret = therm_get_temp(tsens_id_map[i], THERM_TSENS_ID, &temp);
 		if (ret) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 					tsens_id_map[i], ret);
 			auto_cnt++;
@@ -2959,6 +3005,7 @@ static void check_temp(struct work_struct *work)
 
 	ret = therm_get_temp(msm_thermal_info.sensor_id, THERM_TSENS_ID, &temp);
 	if (ret) {
+		BBOX_GET_TEMP_FAIL;
 		pr_err("Unable to read TSENS sensor:%d. err:%d\n",
 				msm_thermal_info.sensor_id, ret);
 		goto reschedule;
@@ -3082,6 +3129,7 @@ static int hotplug_init_cpu_offlined(void)
 			continue;
 		if (therm_get_temp(cpus[cpu].sensor_id, cpus[cpu].id_type,
 					&temp)) {
+			BBOX_GET_TEMP_FAIL;
 			pr_err("Unable to read TSENS sensor:%d.\n",
 				cpus[cpu].sensor_id);
 			mutex_unlock(&core_control_mutex);
