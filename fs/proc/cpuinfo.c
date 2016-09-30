@@ -19,6 +19,8 @@ static const struct file_operations proc_cpuinfo_operations = {
 static int __init proc_cpuinfo_init(void)
 {
 	proc_create("cpuinfo", 0, NULL, &proc_cpuinfo_operations);
+        /* FIH,Jimi,2016/1/6 add for /proc fih virtual file*/
+        proc_create("cpu_info", 0, NULL, &proc_cpuinfo_operations);
 	return 0;
 }
 module_init(proc_cpuinfo_init);
