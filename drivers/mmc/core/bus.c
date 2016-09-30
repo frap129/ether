@@ -25,6 +25,8 @@
 #include "sdio_cis.h"
 #include "bus.h"
 
+#include "../../../arch/arm64/kernel/fih/fih_sd_status.h"
+
 #define to_mmc_driver(d)	container_of(d, struct mmc_driver, drv)
 #define RUNTIME_SUSPEND_DELAY_MS 10000
 
@@ -101,6 +103,13 @@ mmc_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	 * for the module it carries no information as to what is inserted.
 	 */
 	retval = add_uevent_var(env, "MODALIAS=mmc:block");
+
+        if(card->type == MMC_TYPE_SD && strstr(env->buf, "ACTION=add")) {
+                fih_sd_status_setup("1");
+        }
+        else if(card->type == MMC_TYPE_SD && strstr(env->buf, "ACTION=remove")) {
+                fih_sd_status_setup("0");
+        }
 
 	return retval;
 }
