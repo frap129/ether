@@ -176,6 +176,12 @@ struct subsys_device {
 	struct list_head list;
 };
 
+/* NBQ-788 - Porting FIH SSR ramdump mechanism */
+#define MAX_SSR_REASON_LEN 81U
+extern char fih_failure_reason[MAX_SSR_REASON_LEN];
+bool disable_MDM_RamDump = false;
+/* end NBQ-788 */
+
 static struct subsys_device *to_subsys(struct device *d)
 {
 	return container_of(d, struct subsys_device, dev);
@@ -453,6 +459,11 @@ static int is_ramdump_enabled(struct subsys_device *dev)
 {
 	if (dev->desc->ramdump_disable_gpio)
 		return !dev->desc->ramdump_disable;
+
+	/* NBQ-788- - Porting FIH SSR ramdump mechanism */
+	if (disable_MDM_RamDump == true)
+		return 0;
+	/* end NBQ-788 */
 
 	return enable_ramdumps;
 }
@@ -855,6 +866,21 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 	pr_debug("[%p]: Starting restart sequence for %s\n", current,
 			desc->name);
+
+	/* NBQ-788 - Porting FIH SSR ramdump mechanism */
+	if ( (strcmp(desc->name, "modem") == 0) && enable_ramdumps ) {
+		if ((strstr(fih_failure_reason, "diagoem.c") != NULL) || (strstr(fih_failure_reason, "fih_qmi_svc.c") != NULL) ||
+		    (strstr(fih_failure_reason, "fih_nv.c") != NULL)) {
+			disable_MDM_RamDump = true;
+
+			pr_info("[%p]: disable_MDM_RamDump = %s, fih_failure_reason = %s.\n",
+			current, (disable_MDM_RamDump?"TRUE":"FALSE"), fih_failure_reason);
+		}
+	}
+	else
+		disable_MDM_RamDump = false;
+	/* end NBQ-788 */
+
 	notify_each_subsys_device(list, count, SUBSYS_BEFORE_SHUTDOWN, NULL);
 	for_each_subsys_device(list, count, NULL, subsystem_shutdown);
 	notify_each_subsys_device(list, count, SUBSYS_AFTER_SHUTDOWN, NULL);
@@ -877,6 +903,13 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 
 	pr_info("[%p]: Restart sequence for %s completed.\n",
 			current, desc->name);
+
+	/* NBQ-788 - Porting FIH SSR ramdump mechanism */
+	if ( strcmp(desc->name, "modem") == 0 ) {
+		disable_MDM_RamDump = false;
+		pr_debug("[%p]: disable_MDM_RamDump = %s.\n", current, (disable_MDM_RamDump?"TRUE":"FALSE"));
+	}
+	/* end NBQ-788 */
 
 	mutex_unlock(&soc_order_reg_lock);
 	mutex_unlock(&track->lock);
