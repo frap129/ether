@@ -263,6 +263,8 @@ static int __qseecom_enable_clk(enum qseecom_ce_hw_instance ce);
 static void __qseecom_disable_clk(enum qseecom_ce_hw_instance ce);
 static int __qseecom_init_clk(enum qseecom_ce_hw_instance ce);
 
+int fpc_clk_set(bool enable);
+
 static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			const void *req_buf, void *resp_buf)
 {
@@ -1532,6 +1534,14 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		|| (!memcmp(data->client.app_name, "kmota", strlen("kmota")))) {
 		pr_debug("Do not unload keymaster or kmota app from tz\n");
 		goto unload_exit;
+	}
+
+	if ((!memcmp(data->client.app_name, "fpctzappfingerprint", strlen("fpctzappfingerprint")))) {
+		pr_err("Before unload fpctzappfingerprint need to enable fpc clk\n");
+		if (fpc_clk_set(true) != 0) {
+			pr_err("Fail to enable fpc clk. Do not unload fpctzappfingerprint\n");
+			goto unload_exit;
+		}
 	}
 
 	if (data->client.app_id > 0) {
@@ -2830,8 +2840,6 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		ret = __qseecom_load_fw(data, app_name);
 		if (ret < 0)
 			goto err;
-		data->client.app_id = ret;
-		strlcpy(data->client.app_name, app_name, MAX_APP_NAME_SIZE);
 	}
 	data->client.app_id = ret;
 	if (!found_app) {
@@ -3668,6 +3676,8 @@ static int qseecom_query_app_loaded(struct qseecom_dev_handle *data,
 		return ret;	/* scm call failed */
 	} else if (ret > 0) {
 		pr_debug("App id %d (%s) already exists\n", ret,
+			(char *)(req.app_name));
+		pr_err("App id %d (%s) already exists\n", ret,
 			(char *)(req.app_name));
 		spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
 		list_for_each_entry(entry,
