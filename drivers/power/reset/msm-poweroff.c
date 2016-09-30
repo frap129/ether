@@ -32,6 +32,9 @@
 #include <soc/qcom/restart.h>
 #include <soc/qcom/watchdog.h>
 
+#include "../../../arch/arm64/kernel/fih/fih_rere.h"  /* FIH,Jimi,2015/08/29 add for support fih reboot command */
+#include "../../../arch/arm64/kernel/fih/fih_secboot.h"
+
 #define EMERGENCY_DLOAD_MAGIC1    0x322A4F99
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
@@ -63,7 +66,7 @@ static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
 static int dload_set(const char *val, struct kernel_param *kp);
-static int download_mode = 1;
+static int download_mode = 0;/* FIH,Jimi,2015/1/05 change default value from 1 to 0 */
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -165,6 +168,8 @@ static int dload_set(const char *val, struct kernel_param *kp)
 	}
 
 	set_dload_mode(download_mode);
+	pr_info("%s: download_mode = %d\n", __func__, download_mode);/* FIH,Jimi,2015/08/29 add for support fih reboot command */
+
 
 	return 0;
 }
@@ -181,6 +186,19 @@ static bool get_dload_mode(void)
 	return false;
 }
 #endif
+
+/* FIH,Jimi,2015/08/29 add for support fih rere {*/
+unsigned int restart_reason_rd(void)
+{
+        return readl(restart_reason);
+}
+
+void restart_reason_wt(unsigned int rere)
+{
+        __raw_writel(rere, restart_reason);
+}
+/* FIH,Jimi,2015/08/29 add for support fih rere }*/
+
 
 void msm_set_restart_mode(int mode)
 {
@@ -245,6 +263,11 @@ static void msm_restart_prepare(const char *cmd)
 			need_warm_reset = true;
 	}
 
+	/* Porting last_kmsg start*/
+	/* WARM-RESET is needed for keeping PSTORE content in DDR */
+	need_warm_reset = true;
+	/* Porting last_kmsg end */
+            
 	/* Hard reset the PMIC unless memory contents must be maintained. */
 	if (need_warm_reset) {
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
@@ -253,6 +276,7 @@ static void msm_restart_prepare(const char *cmd)
 	}
 
 	if (cmd != NULL) {
+		pr_info("%s: cmd = (%s)\n", __func__, cmd);/* FIH,Jimi,2015/08/29 add for support fih reboot command */
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_BOOTLOADER);
@@ -284,6 +308,44 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+
+        /* FIH,Jimi,2015/08/29 add for support fih reboot command {*/
+        /* FIH, to support fih command { */
+        if (cmd != NULL) {
+                if (!strncmp(cmd, "ftm", 3)) {
+                        __raw_writel(FIH_RERE_FACTORY_MODE, restart_reason);
+                } else if (!strncmp(cmd, "poff_chg_alarm", 14)) {
+                        __raw_writel(FIH_RERE_POFF_CHG_ALARM, restart_reason);
+                } else if (!strncmp(cmd, "unknown", 7)) {
+                        __raw_writel(FIH_RERE_UNKNOWN_RESET, restart_reason);
+                        set_dload_mode(download_mode);
+                } else if (!strncmp(cmd, "panic", 5)) {
+                        __raw_writel(FIH_RERE_KERNEL_PANIC, restart_reason);
+                        set_dload_mode(download_mode);
+                } else if (strstr(cmd, "exception in system process") ||
+                        strstr(cmd, "Watchdog reboot system") ||
+                        strstr(cmd, "system crash")) {
+                        __raw_writel(FIH_RERE_FRAMEWORK_EXCEPTION, restart_reason);
+                } else if (strstr(cmd, "modem crashed")) {
+                        __raw_writel(FIH_RERE_MODEM_FATAL_ERR, restart_reason);
+                        set_dload_mode(download_mode);
+                }
+        } else {
+                pr_info("%s: cmd is NULL\n", __func__);
+                __raw_writel(FIH_RERE_CMD_REBOOT_MODE, restart_reason);
+        }
+
+        if (in_panic) {
+                pr_info("%s: in_panic = %d\n", __func__, in_panic);
+                qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+                __raw_writel(FIH_RERE_KERNEL_PANIC, restart_reason);
+                set_dload_mode(download_mode);
+        }
+
+        pr_info("%s: rere = 0x%08x\n", __func__, readl(restart_reason));
+        pr_info("%s: dload = (%s)\n", __func__, (get_dload_mode()? "true":"false"));
+        /* FIH, to support fih command } */
+        /* FIH,Jimi,2015/08/29 add for support fih reboot command }*/
 
 	flush_cache_all();
 
