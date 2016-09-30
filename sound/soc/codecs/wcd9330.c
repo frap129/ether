@@ -82,6 +82,11 @@ enum {
 #define SLIM_BW_CLK_GEAR_9 6200000
 #define SLIM_BW_UNVOTE 0
 
+/* Black Box */
+//weihung[NBQM-590]:Add BBOX log
+#define BBOX_AUDIOCODEC_SLIMBUS_RX_FAIL do {printk("BBox;%s: slimbus rx fail\n", __func__); printk("BBox::UEC;3::0\n");} while (0);
+#define BBOX_AUDIOCODEC_SLIMBUS_TX_FAIL do {printk("BBox;%s: slimbus tx fail\n", __func__); printk("BBox::UEC;3::0\n");} while (0);
+
 static int cpe_debug_mode;
 module_param(cpe_debug_mode, int,
 	     S_IRUGO | S_IWUSR | S_IWGRP);
@@ -6416,6 +6421,8 @@ static int tomtom_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 						      dai->grph);
 			pr_debug("%s: Disconnect RX port, ret = %d\n",
 				 __func__, ret);
+			//weihung[NBQM-590]:Add BBOX log
+			BBOX_AUDIOCODEC_SLIMBUS_RX_FAIL;
 		}
 		break;
 	}
@@ -6558,6 +6565,8 @@ static int __tomtom_codec_enable_slimtx(struct snd_soc_codec *codec,
 			dev_dbg(codec->dev,
 				"%s: Disconnect TX port, ret = %d\n",
 				 __func__, ret);
+			//weihung[NBQM-590]:Add BBOX log
+			BBOX_AUDIOCODEC_SLIMBUS_TX_FAIL;
 		}
 		break;
 	}
@@ -7540,16 +7549,28 @@ static int tomtom_handle_pdata(struct tomtom_priv *tomtom)
 		}
 	}
 
-	/* Set micbias capless mode with tail current */
-	value = (pdata->micbias.bias1_cap_mode == MICBIAS_EXT_BYP_CAP ?
-		 0x00 : 0x16);
+	//weihung[NBQM-2214]:It is obvious that this mic data wave has a toothed border ,and fixed it
+    pdata->micbias.bias1_cap_mode = MICBIAS_EXT_BYP_CAP;
+    pdata->micbias.bias3_cap_mode = MICBIAS_EXT_BYP_CAP;
+     value = (pdata->micbias.bias1_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 0x06 : 0x16);
 	snd_soc_update_bits(codec, TOMTOM_A_MICB_1_CTL, 0x1E, value);
-	value = (pdata->micbias.bias2_cap_mode == MICBIAS_EXT_BYP_CAP ?
-		 0x00 : 0x16);
-	snd_soc_update_bits(codec, TOMTOM_A_MICB_2_CTL, 0x1E, value);
 	value = (pdata->micbias.bias3_cap_mode == MICBIAS_EXT_BYP_CAP ?
-		 0x00 : 0x16);
+		 0x06 : 0x16);
 	snd_soc_update_bits(codec, TOMTOM_A_MICB_3_CTL, 0x1E, value);
+    //weihung [NBQM-2214]:It is obvious that this mic data wave has a toothed border ,and fixed it
+
+
+	/* Set micbias capless mode with tail current */
+	// value = (pdata->micbias.bias1_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 // 0x00 : 0x16);
+	// snd_soc_update_bits(codec, TOMTOM_A_MICB_1_CTL, 0x1E, value);
+	value = (pdata->micbias.bias2_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 0x06 : 0x16);
+	snd_soc_update_bits(codec, TOMTOM_A_MICB_2_CTL, 0x1E, value);
+	// value = (pdata->micbias.bias3_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 // 0x00 : 0x16);
+	// snd_soc_update_bits(codec, TOMTOM_A_MICB_3_CTL, 0x1E, value);
 	value = (pdata->micbias.bias4_cap_mode == MICBIAS_EXT_BYP_CAP ?
 		 0x00 : 0x16);
 	snd_soc_update_bits(codec, TOMTOM_A_MICB_4_CTL, 0x1E, value);

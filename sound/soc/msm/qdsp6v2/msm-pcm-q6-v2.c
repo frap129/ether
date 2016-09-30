@@ -634,6 +634,8 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 			(atomic_read(&prtd->out_count)), 5 * HZ);
 	if (!ret) {
 		pr_err("%s: wait_event_timeout failed\n", __func__);
+		//weihung[NBQM-590]:Add BBOX log
+		printk("BBox;%s, wait_event_timeout failed\n",__func__);
 		goto fail;
 	}
 
@@ -669,6 +671,8 @@ static int msm_pcm_playback_copy(struct snd_pcm_substream *substream, int a,
 			ret = q6asm_write(prtd->audio_client, xfer,
 						0, 0, NO_TIMESTAMP);
 			if (ret < 0) {
+				//weihung[NBQM-590]:Add BBOX log
+				printk("BBox;%s, Audio Set datasource failed\n",__func__);
 				ret = -EFAULT;
 				goto fail;
 			}
@@ -959,6 +963,8 @@ static int msm_pcm_set_volume(struct msm_audio *prtd, uint32_t volume)
 		if (rc < 0) {
 			pr_err("%s: Send Volume command failed rc=%d\n",
 					__func__, rc);
+			//weihung[NBQM-590]:Add BBOX log
+			printk("BBox;%s: Send Volume command failed rc=%d\n",__func__, rc);
 		}
 	}
 	return rc;
