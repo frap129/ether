@@ -969,7 +969,12 @@ static void pcie_phy_init(struct msm_pcie_dev_t *dev)
 
 	PCIE_DBG(dev, "RC%d: Initializing 20nm QMP phy - 19.2MHz\n",
 		dev->rc_idx);
-
+	///Force phy to reset before init. ///
+	msm_pcie_write_reg(dev->phy, PCIE_PHY_SW_RESET, 0x01);
+	msm_pcie_write_reg(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x0);
+	wmb();
+	udelay(1000);
+	///Force phy to reset before init. ///
 	msm_pcie_write_reg(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x03);
 
 	msm_pcie_write_reg(dev->phy, QSERDES_COM_SYSCLK_EN_SEL_TXBAND, 0x08);
@@ -3262,16 +3267,21 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 
 	if (options & PM_VREG) {
 		ret = msm_pcie_vreg_init(dev);
-		if (ret)
+		if (ret){
+			pr_info("BBox::UEC; 13::0\n");
+		  pr_info("BBox; %s: PCIE for Wi-Fi Power-up failed. ret=%d\n",__func__, ret);
 			goto out;
+		}
 	}
 
 	/* enable clocks */
 	if (options & PM_CLK) {
 		ret = msm_pcie_clk_init(dev);
 		wmb();
-		if (ret)
+		if (ret){
+			pr_info("BBox; %s: PCIE for Wi-Fi enable clocks failed. ret=%d\n",__func__, ret);
 			goto clk_fail;
+		}
 	}
 
 	if (dev->scm_dev_id) {
@@ -3306,8 +3316,10 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 		/* Enable the pipe clock */
 		ret = msm_pcie_pipe_clk_init(dev);
 		wmb();
-		if (ret)
+		if (ret){
+			pr_info("BBox; %s: PCIE for Wi-Fi Enable the pipe clock failed. ret=%d\n",__func__, ret);
 			goto link_fail;
+		}
 	}
 
 	PCIE_DBG(dev, "RC%d: waiting for phy ready...\n", dev->rc_idx);
