@@ -1532,7 +1532,8 @@ static struct console msm_hsl_console = {
 	.write = msm_hsl_console_write,
 	.device = uart_console_device,
 	.setup = msm_hsl_console_setup,
-	.flags = CON_PRINTBUFFER,
+/*	.flags = CON_PRINTBUFFER,*/
+        .flags = 0,
 	.index = -1,
 	.data = &msm_hsl_uart_driver,
 };
