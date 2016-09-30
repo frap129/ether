@@ -555,6 +555,8 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		&chipid, MSM_CAMERA_I2C_WORD_DATA);
 	if (rc < 0) {
 		pr_err("%s: %s: read id failed\n", __func__, sensor_name);
+		printk("BBox; %s: %s: read id failed\n", __func__, sensor_name);
+		printk("BBox::UEC;%d::%d\n", 9, 0);
 		return rc;
 	}
 
@@ -562,6 +564,8 @@ int msm_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		slave_info->sensor_id);
 	if (msm_sensor_id_by_mask(s_ctrl, chipid) != slave_info->sensor_id) {
 		pr_err("msm_sensor_match_id chip id doesnot match\n");
+		printk("BBox; %s: %s: chip id doesnot match\n", __func__, sensor_name);
+		printk("BBox::UEC;%d::%d\n", 9, 1);
 		return -ENODEV;
 	}
 	return rc;
