@@ -25,6 +25,7 @@
 #include <linux/of_device.h>
 #include <linux/radix-tree.h>
 #include <linux/qpnp/pwm.h>
+#include <fih/hwid.h>
 
 #define QPNP_LPG_DRIVER_NAME	"qcom,qpnp-pwm"
 #define QPNP_LPG_CHANNEL_BASE	"qpnp-lpg-channel-base"
@@ -1092,6 +1093,15 @@ static int qpnp_lpg_configure_lut_state(struct qpnp_pwm_chip *chip,
 
 	if (chip->in_test_mode) {
 		test_enable = (state == QPNP_LUT_ENABLE) ? 1 : 0;
+
+		/* Sabcatshih+ Keep DTEST4 enabled, otherwise WLED probably fails to be turned off */
+		pr_debug("test_enable %d fih_hwid %d ch_id %d\n", test_enable, fih_hwid_fetch(FIH_HWID_PRJ), chip->channel_id);
+		if(((fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ) || (fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_VZW))
+					&& (chip->channel_id == 3)) {
+			test_enable = 1;
+		}
+		/* Sabcatshih- */
+
 		rc = qpnp_dtest_config(chip, test_enable);
 		if (rc)
 			pr_err("Failed to configure TEST mode\n");
@@ -1146,6 +1156,15 @@ static int qpnp_lpg_configure_pwm_state(struct qpnp_pwm_chip *chip,
 
 	if (chip->in_test_mode) {
 		test_enable = (state == QPNP_PWM_ENABLE) ? 1 : 0;
+
+		/* Sabcatshih+ Keep DTEST4 enabled, otherwise WLED probably fails to be turned off */
+		pr_debug("test_enable %d fih_hwid %d ch_id %d\n", test_enable, fih_hwid_fetch(FIH_HWID_PRJ), chip->channel_id);
+		if(((fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ) || (fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_VZW))
+					&& (chip->channel_id == 3)) {
+			test_enable = 1;
+		}
+		/* Sabcatshih- */
+
 		rc = qpnp_dtest_config(chip, test_enable);
 		if (rc)
 			pr_err("Failed to configure TEST mode\n");
