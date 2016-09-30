@@ -117,6 +117,8 @@
 #define QPNP_VADC_RATIOMETRIC_RECALIB_OFFSET			12
 #define QPNP_VADC_RECALIB_MAXCNT				10
 
+#define BBOX_ADD_HWMON_FAIL do {printk("BBox;%s: Thermal add hwmon fail\n", __func__); printk("BBox::UEC;22::5\n");} while (0);
+
 struct qpnp_vadc_mode_state {
 	bool				meas_int_mode;
 	bool				meas_int_request_in_queue;
@@ -181,6 +183,8 @@ static struct qpnp_vadc_scale_fn vadc_scale_fn[] = {
 static struct qpnp_vadc_rscale_fn adc_vadc_rscale_fn[] = {
 	[SCALE_RVADC_ABSOLUTE] = {qpnp_vadc_absolute_rthr},
 };
+
+struct qpnp_vadc_chip *fih_vadc = NULL;
 
 static int32_t qpnp_vadc_read_reg(struct qpnp_vadc_chip *vadc, int16_t reg,
 								u8 *data)
@@ -2118,6 +2122,22 @@ int32_t qpnp_vadc_end_channel_monitor(struct qpnp_vadc_chip *chip)
 }
 EXPORT_SYMBOL(qpnp_vadc_end_channel_monitor);
 
+int fih_get_usbin_voltage_now(void)
+{
+	int rc = -1;
+	struct qpnp_vadc_result result;
+
+	rc = qpnp_vadc_read(fih_vadc, 0, &result);
+
+	if (rc) {
+		pr_err("FIH VADC read error with %d\n", rc);
+		return 0;
+	}
+
+	return result.physical;
+}
+EXPORT_SYMBOL(fih_get_usbin_voltage_now);
+
 static ssize_t qpnp_adc_show(struct device *dev,
 			struct device_attribute *devattr, char *buf)
 {
@@ -2224,6 +2244,7 @@ static int32_t qpnp_vadc_init_thermal(struct qpnp_vadc_chip *vadc,
 				0, 0, &vadc->vadc_therm_chan[i],
 				&qpnp_vadc_thermal_ops, NULL, 0, 0);
 			if (IS_ERR(vadc->vadc_therm_chan[i].tz_dev)) {
+				BBOX_ADD_HWMON_FAIL;
 				pr_err("thermal device register failed.\n");
 				goto thermal_err_sens;
 			}
@@ -2402,6 +2423,9 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 	}
 
 	vadc->vadc_iadc_sync_lock = false;
+
+	fih_vadc = vadc;
+
 	dev_set_drvdata(&spmi->dev, vadc);
 	list_add(&vadc->list, &qpnp_vadc_device_list);
 
