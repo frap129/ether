@@ -27,6 +27,8 @@
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 
+extern struct _cpufreq_subsys_opt *cpufreq_subsys_opt;  //20141223 VNAL-537 IsonYHHung start
+
 static DEFINE_PER_CPU(struct od_cpu_dbs_info_s, od_cpu_dbs_info);
 
 static struct od_ops od_ops;
@@ -160,6 +162,13 @@ static void od_check_cpu(int cpu, unsigned int load)
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 
 	dbs_info->freq_lo = 0;
+
+//20141223 VNAL-537 IsonYHHung start
+		if(cpufreq_subsys_opt){
+			if (cpufreq_subsys_opt->cpuload(policy, load))
+			return;
+		}
+//20141223 VNAL-537 IsonYHHung end
 
 	/* Check for frequency increase */
 	if (load > od_tuners->up_threshold) {
