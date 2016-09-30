@@ -25,6 +25,10 @@
 #include <linux/qpnp/qpnp-haptic.h>
 #include "../../staging/android/timed_output.h"
 
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+#include <fih/hwid.h>
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
+
 #define QPNP_IRQ_FLAGS	(IRQF_TRIGGER_RISING | \
 			IRQF_TRIGGER_FALLING | \
 			IRQF_ONESHOT)
@@ -1442,7 +1446,20 @@ static int qpnp_hap_set(struct qpnp_hap *hap, int on)
 
 	if (hap->play_mode == QPNP_HAP_PWM) {
 		if (on)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		{
 			rc = pwm_enable(hap->pwm_info.pwm_dev);
+			if (rc)
+			{
+				if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+				{
+					printk("BBox::UEC; 19::2\n");
+					printk("BBox::UEC; 19::5\n");
+					return rc;
+				}
+			}
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		else
 			pwm_disable(hap->pwm_info.pwm_dev);
 	} else if (hap->play_mode == QPNP_HAP_BUFFER ||
@@ -1602,6 +1619,12 @@ static int qpnp_hap_get_time(struct timed_output_dev *dev)
 		ktime_t r = hrtimer_get_remaining(&hap->hap_timer);
 		return (int)ktime_to_us(r);
 	} else {
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 19::1\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		return 0;
 	}
 }
@@ -2121,6 +2144,12 @@ static int qpnp_haptic_probe(struct spmi_device *spmi)
 	hap_resource = spmi_get_resource(spmi, 0, IORESOURCE_MEM, 0);
 	if (!hap_resource) {
 		dev_err(&spmi->dev, "Unable to get haptic base address\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 19::0\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		return -EINVAL;
 	}
 	hap->base = hap_resource->start;
@@ -2130,12 +2159,24 @@ static int qpnp_haptic_probe(struct spmi_device *spmi)
 	rc = qpnp_hap_parse_dt(hap);
 	if (rc) {
 		dev_err(&spmi->dev, "DT parsing failed\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 19::0\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		return rc;
 	}
 
 	rc = qpnp_hap_config(hap);
 	if (rc) {
 		dev_err(&spmi->dev, "hap config failed\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 19::0\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		return rc;
 	}
 
@@ -2157,6 +2198,12 @@ static int qpnp_haptic_probe(struct spmi_device *spmi)
 	rc = timed_output_dev_register(&hap->timed_dev);
 	if (rc < 0) {
 		dev_err(&spmi->dev, "timed_output registration failed\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 19::0\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		goto timed_output_fail;
 	}
 
@@ -2172,6 +2219,12 @@ static int qpnp_haptic_probe(struct spmi_device *spmi)
 				&qpnp_hap_attrs[i].attr);
 		if (rc < 0) {
 			dev_err(&spmi->dev, "sysfs creation failed\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 19::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto sysfs_fail;
 		}
 	}
