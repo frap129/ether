@@ -108,8 +108,10 @@ int wcnss_prealloc_init(void)
 	for (i = 0; i < ARRAY_SIZE(wcnss_allocs); i++) {
 		wcnss_allocs[i].occupied = 0;
 		wcnss_allocs[i].ptr = kmalloc(wcnss_allocs[i].size, GFP_KERNEL);
-		if (wcnss_allocs[i].ptr == NULL)
+		if (wcnss_allocs[i].ptr == NULL){
+			pr_info("BBox; %s: wcnss: pre-allocation failed.\n",__func__);
 			return -ENOMEM;
+		}
 	}
 
 	return 0;
@@ -167,6 +169,8 @@ void *wcnss_prealloc_get(unsigned int size)
 	}
 	spin_unlock_irqrestore(&alloc_lock, flags);
 
+    pr_info("BBox; %s: prealloc not available for size: %d\n",
+			__func__, size);
 	pr_err("wcnss: %s: prealloc not available for size: %d\n",
 			__func__, size);
 
