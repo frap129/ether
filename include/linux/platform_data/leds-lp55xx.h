@@ -22,6 +22,7 @@
 
 struct lp55xx_led_config {
 	const char *name;
+	const char *default_trigger; //NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver.
 	u8 chan_nr;
 	u8 led_current; /* mA x10, 0 if led is not connected */
 	u8 max_current;
@@ -35,6 +36,17 @@ struct lp55xx_predef_pattern {
 	u8 size_g;
 	u8 size_b;
 };
+
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+enum lp8501_pwr_sel {
+	LP8501_ALL_VDD,		/* D1~9 are connected to VDD */
+	LP8501_6VDD_3VOUT,	/* D1~6 with VDD, D7~9 with VOUT */
+	LP8501_3VDD_6VOUT,	/* D1~6 with VOUT, D7~9 with VDD */
+	LP8501_ALL_VOUT,	/* D1~9 are connected to VOUT */
+};
+
+#define MAX_TRIGGER_PINES 6
+/* end  NBQ - MaoyiChou - [NBQ-775] */
 
 /*
  * struct lp55xx_platform_data
@@ -59,6 +71,18 @@ struct lp55xx_platform_data {
 	/* Clock configuration */
 	u8 clock_mode;
 
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+	/* optional enable GPIO */
+	int enable_gpio;
+//FIH, Hubert, 20151027, config trig_gpio and int_gpio {
+	int trig_gpio;
+	int int_gpio;
+//} FIH, Hubert, 20151027, config trig_gpio and int_gpio
+
+	/* optional trigger GPIOs */
+	int trigger_gpio[MAX_TRIGGER_PINES];
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
 	/* Platform specific functions */
 	int (*setup_resources)(void);
 	void (*release_resources)(void);
@@ -67,6 +91,11 @@ struct lp55xx_platform_data {
 	/* Predefined pattern data */
 	struct lp55xx_predef_pattern *patterns;
 	unsigned int num_patterns;
+
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+	/* LP8501 specific */
+	enum lp8501_pwr_sel pwr_sel;
+/* end  NBQ - MaoyiChou - [NBQ-775] */
 };
 
 #endif /* _LEDS_LP55XX_H */
