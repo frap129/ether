@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
+#include <fih/hwid.h>
 
 #define WLED_MOD_EN_REG(base, n)	(base + 0x60 + n*0x10)
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)
@@ -1846,14 +1847,30 @@ static void __qpnp_led_work(struct qpnp_led_data *led,
 	case QPNP_ID_RGB_BLUE:
 		rc = qpnp_rgb_set(led);
 		if (rc < 0)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		{
 			dev_err(&led->spmi_dev->dev,
 				"RGB set brightness failed (%d)\n", rc);
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::1\n");
+			}
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		break;
 	case QPNP_ID_LED_MPP:
 		rc = qpnp_mpp_set(led);
 		if (rc < 0)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		{
 			dev_err(&led->spmi_dev->dev,
 					"MPP set brightness failed (%d)\n", rc);
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::1\n");
+			}
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		break;
 	case QPNP_ID_LED_GPIO:
 		rc = qpnp_gpio_set(led);
@@ -3861,22 +3878,47 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 	int rc, i, num_leds = 0, parsed_leds = 0;
 	const char *led_label;
 	bool regulator_probe = false;
+/*FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED {*/
+	struct regulator *regulator_wled;
+/*} FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED*/
 
 	node = spmi->dev.of_node;
 	if (node == NULL)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	{
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 23::0\n");
+		}
 		return -ENODEV;
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 
 	temp = NULL;
 	while ((temp = of_get_next_child(node, temp)))
 		num_leds++;
 
 	if (!num_leds)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+	{
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 23::0\n");
+		}
 		return -ECHILD;
+	}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 
 	led_array = devm_kzalloc(&spmi->dev,
 		(sizeof(struct qpnp_led_data) * num_leds), GFP_KERNEL);
 	if (!led_array) {
 		dev_err(&spmi->dev, "Unable to allocate memory\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+		{
+			printk("BBox::UEC; 23::0\n");
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 		return -ENOMEM;
 	}
 
@@ -3889,6 +3931,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		if (!led_resource) {
 			dev_err(&spmi->dev, "Unable to get LED base address\n");
 			rc = -ENXIO;
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 		led->base = led_resource->start;
@@ -3897,6 +3945,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		if (rc < 0) {
 			dev_err(&led->spmi_dev->dev,
 				"Failure reading label, rc = %d\n", rc);
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -3905,6 +3959,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		if (rc < 0) {
 			dev_err(&led->spmi_dev->dev,
 				"Failure reading led name, rc = %d\n", rc);
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -3913,6 +3973,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		if (rc < 0) {
 			dev_err(&led->spmi_dev->dev,
 				"Failure reading max_current, rc =  %d\n", rc);
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -3920,6 +3986,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		if (rc < 0) {
 			dev_err(&led->spmi_dev->dev,
 				"Failure reading led id, rc =  %d\n", rc);
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -3928,6 +4000,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 			dev_err(&led->spmi_dev->dev,
 				"Failure reading common led configuration," \
 				" rc = %d\n", rc);
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -3956,6 +4034,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 			if (rc < 0) {
 				dev_err(&led->spmi_dev->dev,
 					"Unable to read rgb config data\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+				if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+				{
+					printk("BBox::UEC; 23::0\n");
+				}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 				goto fail_id_check;
 			}
 		} else if (strncmp(led_label, "mpp", sizeof("mpp")) == 0) {
@@ -3963,6 +4047,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 			if (rc < 0) {
 				dev_err(&led->spmi_dev->dev,
 						"Unable to read mpp config data\n");
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+				if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+				{
+					printk("BBox::UEC; 23::0\n");
+				}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 				goto fail_id_check;
 			}
 		} else if (strcmp(led_label, "gpio") == 0) {
@@ -3984,6 +4074,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		} else {
 			dev_err(&led->spmi_dev->dev, "No LED matching label\n");
 			rc = -EINVAL;
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -4004,6 +4100,12 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 							("led_workqueue", 0);
 			if (!led->workqueue) {
 				rc = -ENOMEM;
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+				if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+				{
+					printk("BBox::UEC; 23::0\n");
+				}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 				goto fail_id_check;
 			}
 		}
@@ -4012,16 +4114,38 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 		rc =  qpnp_led_initialize(led);
 		if (rc < 0)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		{
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
 			goto fail_id_check;
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 
 		rc = qpnp_led_set_max_brightness(led);
 		if (rc < 0)
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+		{
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
 			goto fail_id_check;
+		}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 
 		rc = led_classdev_register(&spmi->dev, &led->cdev);
 		if (rc) {
 			dev_err(&spmi->dev, "unable to register led %d,rc=%d\n",
 						 led->id, rc);
+/*FIH, Hubert, 20151021, BBox for touch, vibrator, led {*/
+			if(fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			{
+				printk("BBox::UEC; 23::0\n");
+			}
+/*} FIH, Hubert, 20151021, BBox for touch, vibrator, led*/
 			goto fail_id_check;
 		}
 
@@ -4120,7 +4244,36 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 		parsed_leds++;
 	}
+
+/*FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED {*/
+if((fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+	|| (fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_VZW))
+{
+	if (led->id == 6)	//QPNP_ID_LED_MPP
+	{
+		regulator_wled = regulator_get(NULL , "nbq-wled");
+		if (IS_ERR(regulator_wled))
+		{
+			rc = PTR_ERR(regulator_wled);
+			//FIH, Hubert, 20151021, BBox for touch, vibrator, led
+			printk("BBox::UEC; 23::0\n");
+		}
+		else
+		{
+			rc = regulator_enable(regulator_wled);
+			if (rc)
+			{
+				regulator_put(regulator_wled);
+				//FIH, Hubert, 20151021, BBox for touch, vibrator, led
+				printk("BBox::UEC; 23::0\n");
+			}
+		}
+	}
+}
+/*} FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED*/
+
 	dev_set_drvdata(&spmi->dev, led_array);
+
 	return 0;
 
 fail_id_check:
