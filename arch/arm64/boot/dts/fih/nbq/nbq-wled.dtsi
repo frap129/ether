@@ -1,0 +1,77 @@
+
+&pmi8994_mpps {
+	mpp@a100 {
+		reg = <0xa100 0x100>;
+		qcom,pin-num = <2>;
+		qcom,mode = <6>;	// 1:DIGITAL_OUTPUT 6:SINK
+		qcom,invert = <0>;	// 1:inverted DTEST
+		qcom,src-sel = <7>;	// 7:DTEST4 6:DTEST3 5:DTEST2
+		qcom,pull = <1>;	// 0:PULL UP 0.6k 1:open
+		qcom,vin-sel = <3>;	// VIN3
+		qcom,master-en = <1>;	// MPP EN
+		status = "okay";
+	};
+};
+
+&pmi8994_pwm_4 {
+	qcom,period = <1000>;
+	qcom,mode-select = <0>;
+	//qcom,force-pwm-size = <9>; /* 1202 test */
+	qcom,lpg-dtest-line = <4>;
+	qcom,dtest-output = <1>;
+	qcom,pwm {
+	      qcom,duty = <500>;
+	      label = "pwm";
+	};
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@a100 {
+			compatible = "qcom,leds-qpnp";
+			reg = <0xa100 0x100>;
+			label = "mpp";
+			status = "okay";
+			//mpp-power-supply = <&pm8994_l19>;
+			//qcom,mpp-power-max-voltage = <3300000>;
+			//qcom,mpp-power-min-voltage = <3300000>;
+
+			qcom,led_mpp_2 {
+				label = "mpp";
+				qcom,id = <6>;
+				/* Sabcatshih+ test 1201 */
+				//qcom,source-sel = <14>;
+				//qcom,vin-ctrl = <3>;
+				/* Sabcatshih- test 1201 */
+				qcom,mode = "pwm";
+				//qcom,mode = "lpg";
+				pwms = <&pmi8994_pwm_4 0 0>;
+				qcom,pwm-us = <1000>;
+				qcom,max-current = <20>;
+				qcom,default-state = "off";
+				qcom,start-idx = <1>;
+				qcom,ramp-step-ms = <40>;
+				qcom,pause-hi = <500>;
+				qcom,pause-lo = <2000>;
+				qcom,lut-flags = <31>;
+				qcom,duty-pcts = [00 01 02 03 04 05 06 07 08];
+				linux,name = "nbq_wled";
+				qcom,use-blink;
+				qcom,in-order-command-processing;
+				//linux,default-trigger = "battery-charging";
+			};
+		};
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa19 {
+		status = "okay";
+		pm8994_l19: regulator-l19 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			qcom,init-voltage = <3300000>;
+			qcom,consumer-supplies = "nbq-wled", "";
+		};
+	};
+};

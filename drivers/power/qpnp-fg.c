@@ -2117,6 +2117,7 @@ static void battery_age_work(struct work_struct *work)
 static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CAPACITY_RAW,
+	POWER_SUPPLY_PROP_CAPACITY_MONOTONIC_RAW,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
@@ -2160,6 +2161,9 @@ static int fg_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_RAW:
 		val->intval = get_sram_prop_now(chip, FG_DATA_BATT_SOC);
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_MONOTONIC_RAW:
+		val->intval = get_monotonic_soc_raw(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW_ERROR:
 		val->intval = get_sram_prop_now(chip, FG_DATA_VINT_ERR);

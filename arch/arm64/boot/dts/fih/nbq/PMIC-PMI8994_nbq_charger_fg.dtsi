@@ -1,0 +1,39 @@
+/{
+	nbq_batterydata: qcom,battery-data {
+		/include/ "batterydata-nbq-mcnair-2500mah.dtsi"
+		/include/ "batterydata-nbq-scud-lg-2630mah.dtsi"
+		/include/ "batterydata-nbq-scud-lg-2630mah_diff_ID.dtsi"
+	};
+};
+
+&soc {
+	fih_battery {
+		status = "okay";
+		compatible = "fih,battery";
+	};
+};
+
+&pmi8994_fg {
+	status = "okay";
+	qcom,thermal-coefficients= [C5 86 BE 50 D1 37];
+	qcom,irq-volt-empty-mv = <3050>;
+	qcom,fg-cutoff-voltage-mv = <3300>;
+	qcom,fg-delta-soc = <1>;
+	qcom,fg-soc-max = <100>;
+	qcom,fg-soc-min = <0>;
+	qcom,resume-soc = <99>;
+	qcom,battery-data = <&nbq_batterydata>;
+};
+
+&pmi8994_charger {
+	status = "okay";
+	qcom,float-voltage-mv = <4400>;
+	qcom,fastchg-current-ma = <2400>;
+	qcom,resume-delta-mv = <100>;
+	qcom,charge-unknown-battery;
+	qcom,charging-timeout-mins = <0>;
+	qcom,precharging-timeout-mins = <0>;
+	qcom,fastchg-current-comp = <1200>;
+	qcom,float-voltage-comp = <10>;
+	qcom,battery-data = <&nbq_batterydata>;
+};

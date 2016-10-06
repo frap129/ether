@@ -260,23 +260,9 @@ dtb-$(CONFIG_ARCH_APQ8084) += apq8084-v1.0-old-pwr-grid-liquid.dtb \
 #	apq8094-v2.1-liquid.dtb \
 #	apq8094-v2.1-fluid.dtb \
 #	apq8094-v2.1-dragonboard.dtb
-
-#dtb-$(CONFIG_ARCH_MSM8992) += msm8992-sim.dtb \
-#	msm8992-rumi.dtb \
-#	msm8992-cdp.dtb \
-#	msm8992-mtp.dtb \
-#	msm8992-pmi8994-pm8004-cdp.dtb \
-#	msm8992-pmi8994-pm8004-mtp.dtb
-dtb-$(CONFIG_ARCH_MSM8992) += msm8992-mtp.dtb \
-	msm8992-pmi8994-pm8004-mtp.dtb \
-	msm8992_nbq_evt.dtb \
-	msm8992_nbq_evt15.dtb \
-	msm8992_nbq_evt1c.dtb \
-	msm8992_nbq_dvt.dtb \
-	msm8992_vzw_evt1.dtb \
-	msm8992_nbq_dvt2.dtb \
-	msm8992_nbq_pvt.dtb \
-	msm8992_vzw_evt2.dtb
+dtb-$(CONFIG_ARCH_MSM8992) += \
+	msm8992-mtp.dtb \
+	msm8992-pmi8994-pm8004-mtp.dtb
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
@@ -286,12 +272,12 @@ DTB_LIST := $(dtb-y)
 endif
 
 targets += dtbs
-targets += $(addprefix ../, $(DTB_LIST))
+targets += $(addprefix $(subst qcom,.,$(obj))/, $(DTB_LIST))
 endif
 
-$(obj)/../%.dtb: $(src)/%.dts FORCE
+$(subst qcom,.,$(obj))/%.dtb: $(src)/%.dts FORCE
 	$(call if_changed_dep,dtc)
 
-dtbs: $(addprefix $(obj)/../,$(DTB_LIST))
+dtbs: $(addprefix $(subst qcom,.,$(obj))/,$(DTB_LIST))
 
 clean-files := *.dtb
