@@ -75,6 +75,8 @@
 
 #define VOS_WDA_TIMEOUT 15000
 
+#define vos_roundup(x, y) roundup(x, y);
+
 /*-------------------------------------------------------------------------
   Function declarations and documenation
   ------------------------------------------------------------------------*/
@@ -366,10 +368,13 @@ void vos_deinit_log_completion(void);
 VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		uint32_t indicator,
 		uint32_t reason_code,
-		bool dump_vos_trace);
+		uint32_t dump_vos_trace);
 void vos_wlan_flush_host_logs_for_fatal(void);
 void vos_logging_set_fw_flush_complete(void);
 void vos_probe_threads(void);
 void vos_set_fatal_event(bool value);
 void vos_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
+int vos_get_radio_index(void);
+int vos_set_radio_index(int radio_index);
+void vos_svc_fw_shutdown_ind(struct device *dev);
 #endif // if !defined __VOS_API_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2015 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -853,6 +853,7 @@ int hif_pm_runtime_prevent_suspend(void *ol_sc, void *data);
 int hif_pm_runtime_allow_suspend(void *ol_sc, void *data);
 int hif_pm_runtime_prevent_suspend_timeout(void *ol_sc, void *data,
 						unsigned int delay);
+void hif_request_runtime_pm_resume(void *ol_sc);
 #else
 static inline int hif_pm_runtime_get(HIF_DEVICE *device) { return 0; }
 static inline int hif_pm_runtime_put(HIF_DEVICE *device) { return 0; }
@@ -870,6 +871,8 @@ static inline void *
 hif_runtime_pm_prevent_suspend_init(const char *name) { return NULL; }
 static inline void
 hif_runtime_pm_prevent_suspend_deinit(void *context) { }
+static inline void hif_request_runtime_pm_resume(void *ol_sc)
+{ }
 #endif
 #ifdef __cplusplus
 }
@@ -877,4 +880,12 @@ hif_runtime_pm_prevent_suspend_deinit(void *context) { }
 
 A_BOOL HIFIsMailBoxSwapped(HIF_DEVICE *hd);
 
+#ifdef HIF_PCI
+int hif_addr_in_boundary(HIF_DEVICE *hif_device, A_UINT32 offset);
+#else
+static inline int hif_addr_in_boundary(HIF_DEVICE *hif_device, A_UINT32 offset)
+{
+	return 0;
+}
+#endif
 #endif /* _HIF_H_ */

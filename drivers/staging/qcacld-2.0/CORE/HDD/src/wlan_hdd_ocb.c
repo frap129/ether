@@ -406,10 +406,11 @@ static int hdd_ocb_register_sta(hdd_adapter_t *adapter)
  *
  * Return: A pointer to the OCB configuration struct, NULL on failure.
  */
-static struct sir_ocb_config *hdd_ocb_config_new(int num_channels,
-						 int num_schedule,
-						 int ndl_chan_list_len,
-						 int ndl_active_state_list_len)
+static
+struct sir_ocb_config *hdd_ocb_config_new(uint32_t num_channels,
+					  uint32_t num_schedule,
+					  uint32_t ndl_chan_list_len,
+					  uint32_t ndl_active_state_list_len)
 {
 	struct sir_ocb_config *ret = 0;
 	uint32_t len;
@@ -491,9 +492,9 @@ static void hdd_ocb_set_config_callback(void *context_ptr, void *response_ptr)
 			 * Open the TX data path
 			 */
 			if (!hdd_ocb_register_sta(adapter)) {
-				netif_carrier_on(adapter->dev);
-				netif_tx_start_all_queues(
-				    adapter->dev);
+				wlan_hdd_netif_queue_control(adapter,
+					WLAN_START_ALL_NETIF_QUEUE_N_CARRIER,
+					WLAN_CONTROL_PATH);
 			}
 		}
 
@@ -530,9 +531,8 @@ static int hdd_ocb_set_config_req(hdd_adapter_t *adapter,
 	context.magic = HDD_OCB_MAGIC;
 
 	hddLog(LOG1, FL("Disabling queues"));
-	netif_tx_disable(adapter->dev);
-	netif_carrier_off(adapter->dev);
-
+	wlan_hdd_netif_queue_control(adapter, WLAN_NETIF_TX_DISABLE_N_CARRIER,
+				WLAN_CONTROL_PATH);
 	/* Call the SME API to set the config */
 	halStatus = sme_ocb_set_config(
 		((hdd_context_t *)adapter->pHddCtx)->hHal, &context,
@@ -904,7 +904,7 @@ static int __wlan_hdd_cfg80211_ocb_set_config(struct wiphy *wiphy,
 	void *def_tx_param = NULL;
 	uint32_t def_tx_param_size = 0;
 	int i;
-	int channel_count, schedule_size;
+	uint32_t channel_count, schedule_size;
 	struct sir_ocb_config *config;
 	int rc = -EINVAL;
 	uint8_t *mac_addr;
