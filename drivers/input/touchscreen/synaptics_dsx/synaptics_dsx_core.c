@@ -4101,37 +4101,39 @@ static void fb_notify_resume_work(struct work_struct *work)
 	synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 }
 
+static bool is_enable_touch(struct fb_event *evdata)
+{
+	int *blank;
+
+	blank = evdata->data;
+	switch (*blank) {
+	case FB_BLANK_UNBLANK:
+	case FB_BLANK_NORMAL:
+	case FB_BLANK_VSYNC_SUSPEND:
+	case FB_BLANK_HSYNC_SUSPEND:
+		return true;
+
+	case FB_BLANK_POWERDOWN:
+	default:
+		return false;
+	}
+}
+
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data)
 {
 	struct fb_event *evdata = data;
-	int *blank;
-	bool enable_touch;
 	struct synaptics_rmi4_data *rmi4_data =
 		container_of(self, struct synaptics_rmi4_data, fb_notif);
 
 	if (evdata && evdata->data && rmi4_data) {
-		blank = evdata->data;
-		switch (*blank) {
-		case FB_BLANK_UNBLANK:
-		case FB_BLANK_NORMAL:
-		case FB_BLANK_VSYNC_SUSPEND:
-		case FB_BLANK_HSYNC_SUSPEND:
-			enable_touch = true;
-			break;
-		case FB_BLANK_POWERDOWN:
-		default:
-			enable_touch = false;
-			break;
-		}
-
 		if (rmi4_data->hw_if->board_data->resume_in_workqueue) {
 			if (event == FB_EARLY_EVENT_BLANK) {
 				synaptics_secure_touch_stop(rmi4_data, 0);
-				if (enable_touch)
+				if (is_enable_touch(evdata))
 					schedule_work(
 						&(rmi4_data->fb_notify_work));
-			} else if (event == FB_EVENT_BLANK && !enable_touch) {
+			} else if (event == FB_EVENT_BLANK && !is_enable_touch(evdata)) {
 					flush_work(
 						&(rmi4_data->fb_notify_work));
 					synaptics_rmi4_suspend(
@@ -4141,7 +4143,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 			if (event == FB_EARLY_EVENT_BLANK) {
 				synaptics_secure_touch_stop(rmi4_data, 0);
 			} else if (event == FB_EVENT_BLANK) {
-				if (enable_touch)
+				if (is_enable_touch(evdata))
 					synaptics_rmi4_resume(
 						&(rmi4_data->input_dev->dev));
 				else
