@@ -348,6 +348,9 @@ struct mdss_dsi_ctrl_pdata {
 	int disp_te_gpio;
 	int rst_gpio;
 	int disp_en_gpio;
+#ifdef CONFIG_MACH_FIH_NBQ
+	int disp_ldo_gpio;
+#endif
 	int bklt_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
