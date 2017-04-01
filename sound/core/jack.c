@@ -25,6 +25,17 @@
 #include <sound/jack.h>
 #include <sound/core.h>
 
+#ifdef CONFIG_FIH_NBQ_JACK
+#define BTN0_KEYCODE   0xE2
+#define BTN1_KEYCODE   0x73
+#define BTN2_KEYCODE   0x72
+#define BTN3_KEYCODE   0x73
+#define BTN4_KEYCODE   0x72
+#define BTN5_KEYCODE   0x105
+#define BTN6_KEYCODE   0x106
+#define BTN7_KEYCODE   0x107
+#endif
+
 static int jack_switch_types[] = {
 	SW_HEADPHONE_INSERT,
 	SW_MICROPHONE_INSERT,
@@ -79,8 +90,37 @@ static int snd_jack_dev_register(struct snd_device *device)
 		if (!(jack->type & testbit))
 			continue;
 
+#ifdef CONFIG_FIH_NBQ_JACK
+		switch(i) {
+		case 0:
+			jack->key[0] = BTN0_KEYCODE;
+			break;
+		case 1:
+			jack->key[1] = BTN1_KEYCODE;
+			break;
+		case 2:
+			jack->key[2] = BTN2_KEYCODE;
+			break;
+		case 3:
+			jack->key[3] = BTN3_KEYCODE;
+			break;
+		case 4:
+			jack->key[4] = BTN4_KEYCODE;
+			break;
+		case 5:
+			jack->key[5] = BTN5_KEYCODE;
+			break;
+		case 6:
+			jack->key[6] = BTN6_KEYCODE;
+			break;
+		case 7:
+			jack->key[7] = BTN7_KEYCODE;
+			break;
+		}
+#else
 		if (!jack->key[i])
 			jack->key[i] = BTN_0 + i;
+#endif
 
 		input_set_capability(jack->input_dev, EV_KEY, jack->key[i]);
 	}

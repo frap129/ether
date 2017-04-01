@@ -217,4 +217,10 @@ config SND_DMA_SGBUF
 	def_bool y
 	depends on X86
 
+config FIH_NBQ_JACK
+	bool "NBQ jack detection"
+	depends on MACH_FIH_NBQ
+	help
+	  Say Y here to enable NBQ jack detection.
+
 source "sound/core/seq/Kconfig"

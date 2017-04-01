@@ -349,4 +349,10 @@ config SND_SOC_MDM9640
 	 interfaces with DSP, also it will enable
 	 the machine drivers and the corresponding
 	 DAI-links.
+
+config FIH_NBQ_AUDIO
+	bool "NBQ smart amp"
+	depends on MACH_FIH_NBQ
+	help
+	  Say Y here to enable NBQ smart amp.
 endmenu

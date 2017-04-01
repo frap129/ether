@@ -7548,6 +7548,17 @@ static int tomtom_handle_pdata(struct tomtom_priv *tomtom)
 	}
 
 	/* Set micbias capless mode with tail current */
+#ifdef CONFIG_MACH_FIH_NBQ
+	value = (pdata->micbias.bias1_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 0x06 : 0x16);
+	snd_soc_update_bits(codec, TOMTOM_A_MICB_1_CTL, 0x1E, value);
+	value = (pdata->micbias.bias2_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 0x06 : 0x16);
+	snd_soc_update_bits(codec, TOMTOM_A_MICB_2_CTL, 0x1E, value);
+	value = (pdata->micbias.bias3_cap_mode == MICBIAS_EXT_BYP_CAP ?
+		 0x06 : 0x16);
+	snd_soc_update_bits(codec, TOMTOM_A_MICB_3_CTL, 0x1E, value);
+#else
 	value = (pdata->micbias.bias1_cap_mode == MICBIAS_EXT_BYP_CAP ?
 		 0x00 : 0x16);
 	snd_soc_update_bits(codec, TOMTOM_A_MICB_1_CTL, 0x1E, value);
@@ -7557,6 +7568,7 @@ static int tomtom_handle_pdata(struct tomtom_priv *tomtom)
 	value = (pdata->micbias.bias3_cap_mode == MICBIAS_EXT_BYP_CAP ?
 		 0x00 : 0x16);
 	snd_soc_update_bits(codec, TOMTOM_A_MICB_3_CTL, 0x1E, value);
+#endif
 	value = (pdata->micbias.bias4_cap_mode == MICBIAS_EXT_BYP_CAP ?
 		 0x00 : 0x16);
 	snd_soc_update_bits(codec, TOMTOM_A_MICB_4_CTL, 0x1E, value);
