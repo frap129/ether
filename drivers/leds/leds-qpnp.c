@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
+#include <fih/hwid.h>
 
 #define WLED_MOD_EN_REG(base, n)	(base + 0x60 + n*0x10)
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)
@@ -3861,6 +3862,9 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 	int rc, i, num_leds = 0, parsed_leds = 0;
 	const char *led_label;
 	bool regulator_probe = false;
+/*FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED {*/
+	struct regulator *regulator_wled;
+/*} FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED*/
 
 	node = spmi->dev.of_node;
 	if (node == NULL)
@@ -4120,6 +4124,23 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 		parsed_leds++;
 	}
+
+/*FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED {*/
+	if ((fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_NBQ)
+			|| (fih_hwid_fetch(FIH_HWID_PRJ) == FIH_PRJ_VZW)) {
+		if (led->id == 6) {
+			regulator_wled = regulator_get(NULL , "nbq-wled");
+			if (IS_ERR(regulator_wled))
+				rc = PTR_ERR(regulator_wled);
+			else {
+				rc = regulator_enable(regulator_wled);
+				if (rc)
+					regulator_put(regulator_wled);
+			}
+		}
+	}
+/*} FIH, Hubert, 20150903, [NBQ]add VREG_L19 for WLED*/
+
 	dev_set_drvdata(&spmi->dev, led_array);
 	return 0;
 

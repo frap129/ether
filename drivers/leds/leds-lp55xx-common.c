@@ -19,11 +19,19 @@
 #include <linux/leds.h>
 #include <linux/module.h>
 #include <linux/platform_data/leds-lp55xx.h>
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+#include <linux/slab.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#include <linux/err.h>
+#include <linux/regulator/consumer.h>
+/* end  NBQ - MaoyiChou - [NBQ-775] */
 
 #include "leds-lp55xx-common.h"
 
 /* External clock rate */
 #define LP55XX_CLK_32K			32768
+#define FAKE_BRIGHTNESS			2 //NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver.
 
 static struct lp55xx_led *cdev_to_lp55xx_led(struct led_classdev *cdev)
 {
@@ -164,6 +172,10 @@ static int lp55xx_init_led(struct lp55xx_led *led,
 	led->led_current = pdata->led_config[chan].led_current;
 	led->max_current = pdata->led_config[chan].max_current;
 	led->chan_nr = pdata->led_config[chan].chan_nr;
+	/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+	led->cdev.default_trigger = pdata->led_config[chan].default_trigger;
+	led->cdev.brightness = FAKE_BRIGHTNESS;
+	/* end  NBQ - MaoyiChou - [NBQ-775] */
 
 	if (led->chan_nr >= max_channel) {
 		dev_err(dev, "Use channel numbers between 0 and %d\n",
@@ -345,6 +357,38 @@ int lp55xx_read(struct lp55xx_chip *chip, u8 reg, u8 *val)
 }
 EXPORT_SYMBOL_GPL(lp55xx_read);
 
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+int lp55xx_set_trigger(struct lp55xx_chip *chip, u8 gpio, u8 val)
+{
+	int ret = 0;
+	int i = 0;
+	struct lp55xx_platform_data *pdata;
+	pdata = chip->pdata;
+
+	for (i = 0 ; i < MAX_TRIGGER_PINES; i++)
+		if (!gpio_is_valid(pdata->trigger_gpio[i]))
+			return ret;
+
+	for (i = 0; i < MAX_TRIGGER_PINES; i++)
+		gpio_direction_output(pdata->trigger_gpio[i], 1);
+
+	usleep_range(10000, 20000); /* Keep enable down at least 1ms */
+
+	for (i = 0; i < MAX_TRIGGER_PINES; i++)
+		gpio_set_value(pdata->trigger_gpio[i], 1);
+
+	usleep_range(10000, 20000); /* Keep enable down at least 1ms */
+
+	for (i = 0; i < MAX_TRIGGER_PINES; i++)
+		gpio_set_value(pdata->trigger_gpio[i], 0);
+
+	ret = 1;
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lp55xx_set_trigger);
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
 int lp55xx_update_bits(struct lp55xx_chip *chip, u8 reg, u8 mask, u8 val)
 {
 	int ret;
@@ -390,6 +434,231 @@ use_internal_clk:
 }
 EXPORT_SYMBOL_GPL(lp55xx_is_extclk_used);
 
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+int initTriggerPin(struct lp55xx_platform_data *pdata)
+{
+	int i = 0;
+	int ret = 0;
+
+	for (i = 0 ; i < MAX_TRIGGER_PINES ; i++)
+	{
+		if (gpio_is_valid(pdata->trigger_gpio[i])) {
+			if (gpio_request(pdata->trigger_gpio[i], "lp5523_trigger_pins")) {
+				pr_err("%s: fail: gpio %d unavailable (lp5523_trigger_l1)\n", __func__,
+					pdata->trigger_gpio[i]);
+				goto err;
+			}
+		}
+	}
+
+	return ret;
+
+err:
+	return -EINVAL;
+}
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
+/*  NBQ - MaoyiChou - [NBQ-1102] - [Cloud LED] Add the LP5523 power manager.*/
+int lp55xx_pwr_init(struct lp55xx_chip *chip, bool on)
+{
+	struct lp55xx_platform_data *pdata;
+	struct device *dev = &chip->cl->dev;
+	int ret = 0;
+
+	WARN_ON(!chip);
+
+	pdata = dev->platform_data;
+
+	if (!pdata)
+		return -EINVAL;
+
+	if (on){
+		//ldo10
+		chip->regulator_i2cvddp6 = regulator_get(dev,
+				"I2CVDDP6");
+		if (IS_ERR(chip->regulator_i2cvddp6)) {
+			dev_err(dev,
+					"%s: Failed to get regulator_i2cvddp6\n",
+					__func__);
+			ret = PTR_ERR(chip->regulator_i2cvddp6);
+			regulator_put(chip->regulator_i2cvddp6);
+			return ret;
+		}
+
+		//ldo19
+		chip->regulator_lp55xxvdd = regulator_get(dev,
+				"lp55xxvdd");
+		if (IS_ERR(chip->regulator_lp55xxvdd)) {
+			dev_err(dev,
+					"%s: Failed to get regulator_lp55xxvdd\n",
+					__func__);
+			ret = PTR_ERR(chip->regulator_lp55xxvdd);
+			regulator_put(chip->regulator_lp55xxvdd);
+			return ret;
+		}
+
+		//gpio25
+		ret = gpio_is_valid(pdata->enable_gpio);
+		if (ret){
+			ret = gpio_request(pdata->enable_gpio, "lp55xx_enable");
+			if (ret){
+				pr_err("%s: fail: enable_gpio %d unavailable\n", __func__,
+					pdata->enable_gpio);
+				return ret;
+			}
+			ret = gpio_direction_output(pdata->enable_gpio, 1);
+			if (ret) {
+				pr_err("%s: unable to set dir for enable_gpio [%d]\n", __func__,
+					pdata->enable_gpio);
+				return ret;
+			}
+		}
+		else{
+			pr_err("lp55xx_init_device:enable_gpio_is_valid failed!\n");
+			return ret;
+		}
+
+//FIH, Hubert, 20151027, config trig_gpio and int_gpio {
+		//gpio21
+		ret = gpio_is_valid(pdata->trig_gpio);
+		if (ret){
+			ret = gpio_request(pdata->trig_gpio, "lp55xx_trig");
+			if (ret){
+				pr_err("%s: fail: trig_gpio %d unavailable\n", __func__,
+					pdata->trig_gpio);
+				return ret;
+			}
+			ret = gpio_direction_output(pdata->trig_gpio, 0);
+			if (ret) {
+				pr_err("%s: unable to set dir for trig_gpio [%d]\n", __func__,
+					pdata->trig_gpio);
+				return ret;
+			}
+		}
+		else{
+			pr_err("lp55xx_init_device:trig_gpio_is_valid failed!\n");
+			return ret;
+		}
+
+		//gpio75
+		ret = gpio_is_valid(pdata->int_gpio);
+		if (ret){
+			ret = gpio_request(pdata->int_gpio, "lp55xx_int");
+			if (ret){
+				pr_err("%s: fail: int_gpio %d unavailable\n", __func__,
+					pdata->int_gpio);
+				return ret;
+			}
+			ret = gpio_direction_output(pdata->int_gpio, 0);
+			if (ret) {
+				pr_err("%s: unable to set dir for int_gpio [%d]\n", __func__,
+					pdata->int_gpio);
+				return ret;
+			}
+		}
+		else{
+			pr_err("lp55xx_init_device:int_gpio_is_valid failed!\n");
+			return ret;
+		}
+//} FIH, Hubert, 20151027, config trig_gpio and int_gpio
+	}
+	else{
+		//ldo10
+		if (chip->regulator_i2cvddp6) {
+				regulator_disable(chip->regulator_i2cvddp6);
+				regulator_put(chip->regulator_i2cvddp6);
+		}
+
+		//ldo19
+		if (chip->regulator_lp55xxvdd) {
+				regulator_disable(chip->regulator_lp55xxvdd);
+				regulator_put(chip->regulator_lp55xxvdd);
+		}
+
+		//gpio25
+		if (gpio_is_valid(pdata->enable_gpio))
+			gpio_set_value(pdata->enable_gpio, 0);
+
+//FIH, Hubert, 20151027, config trig_gpio and int_gpio {
+		//gpio21
+		if (gpio_is_valid(pdata->trig_gpio))
+			gpio_set_value(pdata->trig_gpio, 0);
+
+		//gpio75
+		if (gpio_is_valid(pdata->int_gpio))
+			gpio_set_value(pdata->int_gpio, 0);
+//} FIH, Hubert, 20151027, config trig_gpio and int_gpio
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lp55xx_pwr_init);
+
+int lp55xx_pwr_on(struct lp55xx_chip *chip, bool on)
+{
+	struct lp55xx_platform_data *pdata;
+	struct device *dev = &chip->cl->dev;
+	int ret = 0;
+
+	WARN_ON(!chip);
+
+	pdata = chip->pdata;
+
+	if (!pdata)
+		return -EINVAL;
+
+	if (on){
+		//ldo10
+		ret = regulator_enable(chip->regulator_i2cvddp6);
+		if (ret) {
+			dev_err(dev,
+				"%s: Failed to enable regulator_i2cvddp6\n",
+				__func__);
+			regulator_disable(chip->regulator_i2cvddp6);
+			regulator_put(chip->regulator_i2cvddp6);
+			return ret;
+		}
+
+		//ldo19
+		ret = regulator_enable(chip->regulator_lp55xxvdd);
+		if (ret) {
+			dev_err(dev,
+				"%s: Failed to enable regulator_lp55xxvdd\n",
+				__func__);
+			regulator_disable(chip->regulator_lp55xxvdd);
+			regulator_put(chip->regulator_lp55xxvdd);
+			return ret;
+		}
+
+		//gpio25
+		gpio_set_value(pdata->enable_gpio, 0);
+		usleep_range(1000, 2000); /* Keep enable down at least 1ms */
+		gpio_set_value(pdata->enable_gpio, 1);
+		usleep_range(1000, 2000); /* 500us abs min. */
+
+//FIH, Hubert, 20151027, config trig_gpio and int_gpio {
+		//gpio21
+		gpio_set_value(pdata->trig_gpio, 0);
+
+		//gpio75
+		gpio_set_value(pdata->int_gpio, 0);
+//} FIH, Hubert, 20151027, config trig_gpio and int_gpio
+	}
+	else{
+		regulator_disable(chip->regulator_i2cvddp6);
+		regulator_disable(chip->regulator_lp55xxvdd);
+		gpio_set_value(pdata->enable_gpio, 0);
+//FIH, Hubert, 20151027, config trig_gpio and int_gpio {
+		gpio_set_value(pdata->trig_gpio, 0);
+		gpio_set_value(pdata->int_gpio, 0);
+//} FIH, Hubert, 20151027, config trig_gpio and int_gpio
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(lp55xx_pwr_on);
+/* end  NBQ - MaoyiChou - [NBQ-1102] */
+
 int lp55xx_init_device(struct lp55xx_chip *chip)
 {
 	struct lp55xx_platform_data *pdata;
@@ -404,21 +673,6 @@ int lp55xx_init_device(struct lp55xx_chip *chip)
 
 	if (!pdata || !cfg)
 		return -EINVAL;
-
-	if (pdata->setup_resources) {
-		ret = pdata->setup_resources();
-		if (ret < 0) {
-			dev_err(dev, "setup resoure err: %d\n", ret);
-			goto err;
-		}
-	}
-
-	if (pdata->enable) {
-		pdata->enable(0);
-		usleep_range(1000, 2000); /* Keep enable down at least 1ms */
-		pdata->enable(1);
-		usleep_range(1000, 2000); /* 500us abs min. */
-	}
 
 	lp55xx_reset_device(chip);
 
@@ -441,6 +695,8 @@ int lp55xx_init_device(struct lp55xx_chip *chip)
 		goto err_post_init;
 	}
 
+	initTriggerPin(pdata); //NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver.
+
 	return 0;
 
 err_post_init:
@@ -452,16 +708,10 @@ EXPORT_SYMBOL_GPL(lp55xx_init_device);
 
 void lp55xx_deinit_device(struct lp55xx_chip *chip)
 {
-	struct lp55xx_platform_data *pdata = chip->pdata;
-
 	if (chip->clk)
 		clk_disable_unprepare(chip->clk);
 
-	if (pdata->enable)
-		pdata->enable(0);
-
-	if (pdata->release_resources)
-		pdata->release_resources();
+	lp55xx_pwr_init(chip, false); //  NBQ - MaoyiChou - [NBQ-1102] - [Cloud LED] Add the LP5523 power manager.
 }
 EXPORT_SYMBOL_GPL(lp55xx_deinit_device);
 
@@ -553,6 +803,69 @@ void lp55xx_unregister_sysfs(struct lp55xx_chip *chip)
 	sysfs_remove_group(&dev->kobj, &lp55xx_engine_attr_group);
 }
 EXPORT_SYMBOL_GPL(lp55xx_unregister_sysfs);
+
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+int lp55xx_of_populate_pdata(struct device *dev, struct device_node *np)
+{
+	struct device_node *child;
+	struct lp55xx_platform_data *pdata;
+	struct lp55xx_led_config *cfg;
+	int num_channels;
+	int i = 0;
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return -ENOMEM;
+
+	num_channels = of_get_child_count(np);
+	if (num_channels == 0) {
+		dev_err(dev, "no LED channels\n");
+		return -EINVAL;
+	}
+
+	cfg = devm_kzalloc(dev, sizeof(*cfg) * num_channels, GFP_KERNEL);
+	if (!cfg)
+		return -ENOMEM;
+
+	pdata->led_config = &cfg[0];
+	pdata->num_channels = num_channels;
+
+	for_each_child_of_node(np, child) {
+		cfg[i].chan_nr = i;
+
+		of_property_read_string(child, "chan-name", &cfg[i].name);
+		of_property_read_u8(child, "led-cur", &cfg[i].led_current);
+		of_property_read_u8(child, "max-cur", &cfg[i].max_current);
+		cfg[i].default_trigger =
+			of_get_property(child, "linux,default-trigger", NULL);
+
+		i++;
+	}
+
+	of_property_read_string(np, "label", &pdata->label);
+	of_property_read_u8(np, "clock-mode", &pdata->clock_mode);
+
+	pdata->enable_gpio = of_get_named_gpio(np, "enable-gpio", 0);
+
+//FIH, Hubert, 20151027, config trig_gpio and int_gpio {
+	pdata->trig_gpio = of_get_named_gpio(np, "trig-gpio", 0);
+	pdata->int_gpio = of_get_named_gpio(np, "int-gpio", 0);
+//} FIH, Hubert, 20151027, config trig_gpio and int_gpio
+
+
+	for (i = 0; i < 6; i++) {
+		pdata->trigger_gpio[i] = of_get_gpio(np, i);
+	}
+
+	/* LP8501 specific */
+	of_property_read_u8(np, "pwr-sel", (u8 *)&pdata->pwr_sel);
+
+	dev->platform_data = pdata;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(lp55xx_of_populate_pdata);
+/* end  NBQ - MaoyiChou - [NBQ-775] */
 
 MODULE_AUTHOR("Milo Kim <milo.kim@ti.com>");
 MODULE_DESCRIPTION("LP55xx Common Driver");
