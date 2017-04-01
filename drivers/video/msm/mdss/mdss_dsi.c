@@ -1004,6 +1004,26 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	return ret;
 }
 
+static void __mdss_dsi_update_panel_clk(struct mdss_panel_data *pdata,
+					int new_fps)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s Invalid pdata\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				  panel_data);
+	if (ctrl_pdata == NULL) {
+		pr_err("%s Invalid ctrl_pdata\n", __func__);
+		return;
+	}
+
+	mdss_dsi_panel_update_fps(ctrl_pdata, new_fps);
+}
+
 static void __mdss_dsi_update_video_mode_total(struct mdss_panel_data *pdata,
 		int new_fps)
 {
@@ -1258,34 +1278,49 @@ static int mdss_dsi_dfps_config(struct mdss_panel_data *pdata, int new_fps)
 	if (sctrl_pdata)
 		sctrl_pdata->dfps_status = true;
 
-	if (new_fps !=
-		ctrl_pdata->panel_data.panel_info.mipi.frame_rate) {
-		if (pdata->panel_info.dfps_update
-			== DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP ||
-			pdata->panel_info.dfps_update
-			== DFPS_IMMEDIATE_PORCH_UPDATE_MODE_VFP) {
-
-			__mdss_dsi_update_video_mode_total(pdata, new_fps);
-			if (sctrl_pdata) {
-				pr_debug("%s Updating slave ctrl DFPS\n",
-						__func__);
-				__mdss_dsi_update_video_mode_total(
-						&sctrl_pdata->panel_data,
-						new_fps);
-			}
-
-		} else {
-			rc = __mdss_dsi_dfps_update_clks(pdata, new_fps);
-			if (!rc && sctrl_pdata) {
-				pr_debug("%s Updating slave ctrl DFPS\n",
-						__func__);
-				rc = __mdss_dsi_dfps_update_clks(
-						&sctrl_pdata->panel_data,
-						new_fps);
+	switch (pinfo->type) {
+	case MIPI_CMD_PANEL: {
+		if (new_fps !=
+		    ctrl_pdata->panel_data.panel_info.mipi.refresh_rate) {
+			if (pdata->panel_info.dfps_update ==
+			    DFPS_IMMEDIATE_LCM_CLK_UPDATE_MODE) {
+				__mdss_dsi_update_panel_clk(pdata, new_fps);
 			}
 		}
-	} else {
-		pr_debug("%s: Panel is already at this FPS\n", __func__);
+		break;
+	}
+	case MIPI_VIDEO_PANEL: {
+		if (new_fps !=
+		    ctrl_pdata->panel_data.panel_info.mipi.frame_rate) {
+			if ((pdata->panel_info.dfps_update ==
+			     DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP) ||
+			    (pdata->panel_info.dfps_update ==
+			     DFPS_IMMEDIATE_PORCH_UPDATE_MODE_VFP)) {
+				__mdss_dsi_update_video_mode_total(pdata,
+								   new_fps);
+				if (sctrl_pdata) {
+					pr_debug("%s Updating sctrl DFPS\n",
+							__func__);
+					__mdss_dsi_update_video_mode_total(
+						&sctrl_pdata->panel_data,
+						new_fps);
+				}
+			} else {
+				rc = __mdss_dsi_dfps_update_clks(pdata,
+								 new_fps);
+				if (!rc && sctrl_pdata) {
+					pr_debug("%s Updating sctrl DFPS\n",
+							__func__);
+					rc = __mdss_dsi_dfps_update_clks(
+						&sctrl_pdata->panel_data,
+						new_fps);
+				}
+			}
+		}
+		break;
+	}
+	default:
+		break;
 	}
 
 	return rc;

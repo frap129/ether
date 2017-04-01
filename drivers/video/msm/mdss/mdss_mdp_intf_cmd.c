@@ -29,6 +29,8 @@
 #define POWER_COLLAPSE_TIME msecs_to_jiffies(100)
 
 static DEFINE_MUTEX(cmd_clk_mtx);
+static int mdss_mdp_cmd_config_fps(struct mdss_mdp_ctl *ctl,
+					struct mdss_mdp_ctl *sctl, int new_fps);
 
 struct mdss_mdp_cmd_ctx {
 	struct mdss_mdp_ctl *ctl;
@@ -1546,6 +1548,78 @@ static int mdss_mdp_cmd_reconfigure(struct mdss_mdp_ctl *ctl,
 	return 0;
 }
 
+static int mdss_mdp_cmd_config_fps(struct mdss_mdp_ctl *ctl,
+					struct mdss_mdp_ctl *sctl, int new_fps)
+{
+	struct mdss_mdp_cmd_ctx *ctx, *sctx = NULL;
+	struct mdss_panel_data *pdata;
+	int rc = 0;
+
+	ctx = (struct mdss_mdp_cmd_ctx *) ctl->intf_ctx[MASTER_CTX];
+	if (!ctx) {
+		pr_err("invalid ctx\n");
+		return -ENODEV;
+	}
+
+	if (sctl) {
+		sctx = (struct mdss_mdp_cmd_ctx *) sctl->intf_ctx[MASTER_CTX];
+		if (!sctx) {
+			pr_err("invalid ctx\n");
+			return -ENODEV;
+		}
+	} else if (is_pingpong_split(ctl->mfd)) {
+		sctx = (struct mdss_mdp_cmd_ctx *) ctl->intf_ctx[SLAVE_CTX];
+		if (!sctx) {
+			pr_err("invalid sctx\n");
+			return -ENODEV;
+		}
+	}
+
+	pdata = ctl->panel_data;
+	if (pdata == NULL) {
+		pr_err("%s: Invalid panel data\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!pdata->panel_info.dynamic_fps) {
+		pr_err("%s: Dynamic fps not enabled for this panel\n",
+		       __func__);
+		return -EINVAL;
+	}
+
+	if (pdata->panel_info.dfps_update ==
+	    DFPS_IMMEDIATE_LCM_CLK_UPDATE_MODE) {
+		/*
+		 * There is possibility that the time of mdp flush
+		 * bit set and the time of dsi flush bit are cross
+		 * vsync boundary. Therefore wait4vsync is needed
+		 * to guarantee both flush bits are set within same
+		 * vsync period regardless of mdp revision.
+		 */
+		rc = mdss_mdp_cmd_wait4pingpong(ctl, NULL);
+		if (rc) {
+		    pr_err("Error during wait4pingpong\n");
+		    return rc;
+		}
+
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+
+		rc = mdss_mdp_ctl_intf_event(ctl,
+				MDSS_EVENT_PANEL_UPDATE_FPS,
+				(void *) (unsigned long) new_fps);
+		WARN(rc, "intf %d panel fps update error (%d)\n",
+		     ctl->intf_num, rc);
+
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+	} else {
+		pr_err("intf %d panel, unknown FPS mode\n",
+				ctl->intf_num);
+		return -EINVAL;
+	}
+
+	return rc;
+}
+
 int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 {
 	int ret, session = 0;
@@ -1568,6 +1642,7 @@ int mdss_mdp_cmd_start(struct mdss_mdp_ctl *ctl)
 	ctl->ops.read_line_cnt_fnc = mdss_mdp_cmd_line_count;
 	ctl->ops.restore_fnc = mdss_mdp_cmd_restore;
 	ctl->ops.reconfigure = mdss_mdp_cmd_reconfigure;
+	ctl->ops.config_fps_fnc = mdss_mdp_cmd_config_fps;
 	pr_debug("%s:-\n", __func__);
 
 	return 0;

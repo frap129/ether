@@ -2669,9 +2669,11 @@ static ssize_t dynamic_fps_sysfs_wta_dfps(struct device *dev,
 		return -ENODEV;
 	}
 
-	if (dfps == pdata->panel_info.mipi.frame_rate) {
-		pr_debug("%s: FPS is already %d\n",
-			__func__, dfps);
+	if (((pdata->panel_info.type == MIPI_VIDEO_PANEL) &&
+	     (dfps == pdata->panel_info.mipi.frame_rate)) ||
+	    ((pdata->panel_info.type == MIPI_CMD_PANEL) &&
+	     (dfps == pdata->panel_info.mipi.refresh_rate))) {
+		pr_debug("%s: FPS is already %d\n", __func__, dfps);
 		return count;
 	}
 
@@ -5171,13 +5173,10 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 	if (rc)
 		pr_warn("problem creating link to mdss_fb sysfs\n");
 
-	if (mfd->panel_info->type == MIPI_VIDEO_PANEL) {
-		rc = sysfs_create_group(&dev->kobj,
-			&dynamic_fps_fs_attrs_group);
-		if (rc) {
-			pr_err("Error dfps sysfs creation ret=%d\n", rc);
-			goto init_fail;
-		}
+	rc = sysfs_create_group(&dev->kobj, &dynamic_fps_fs_attrs_group);
+	if (rc) {
+		pr_err("Error dfps sysfs creation ret=%d\n", rc);
+		goto init_fail;
 	}
 
 	if (mfd->panel_info->mipi.dms_mode ||
