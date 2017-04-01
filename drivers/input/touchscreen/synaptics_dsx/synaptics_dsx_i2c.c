@@ -37,9 +37,26 @@
 #include <linux/pm_runtime.h>
 #endif
 
-#define SYN_I2C_RETRY_TIMES 10
+/*FIH, Hubert, 20151014, error handle for touch IC and I2C {*/
+#define SYN_I2C_RETRY_TIMES 5
+/*} FIH, Hubert, 20151014, error handle for touch IC and I2C*/
 #define RESET_DELAY 100
 #define DSX_COORDS_ARR_SIZE	4
+
+/*FIH, Hubert, 20151014, error handle for touch IC and I2C {*/
+static void synaptics_rmi4_harware_reset(struct synaptics_rmi4_data *rmi4_data)
+{
+	int reset_on;
+	reset_on = rmi4_data->hw_if->board_data->reset_on_state;
+	//pull reset pin to reset touch ic
+	pr_debug("synaptics_rmi4_harware_reset_start\n");
+	gpio_set_value(rmi4_data->hw_if->board_data->reset_gpio, reset_on);
+	msleep(rmi4_data->hw_if->board_data->reset_active_ms);
+	gpio_set_value(rmi4_data->hw_if->board_data->reset_gpio, !reset_on);
+	msleep(rmi4_data->hw_if->board_data->reset_delay_ms);
+	pr_debug("synaptics_rmi4_harware_reset_end\n");
+}
+/*} FIH, Hubert, 20151014, error handle for touch IC and I2C*/
 
 static int synaptics_rmi4_i2c_set_page(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr)
@@ -77,7 +94,7 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data, unsigned short length)
 {
 	int retval;
-	unsigned char retry;
+	unsigned char retry, check_times = 0;
 	unsigned char buf;
 	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
 	struct i2c_msg msg[] = {
@@ -110,18 +127,56 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 			retval = length;
 			break;
 		}
-		dev_err(rmi4_data->pdev->dev.parent,
+		dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: I2C retry %d\n",
 				__func__, retry + 1);
+		check_times += 1;
 		msleep(20);
 	}
 
 	if (retry == SYN_I2C_RETRY_TIMES) {
-		dev_err(rmi4_data->pdev->dev.parent,
+		dev_dbg(rmi4_data->pdev->dev.parent,
+				"%s: I2C read over retry limit\n",
+				__func__);
+/*FIH, Hubert, 20151014, error handle for touch IC and I2C {*/
+		if (rmi4_data->hw_if->board_data->reset_gpio >= 0)
+		{
+			synaptics_rmi4_harware_reset(rmi4_data);
+
+			for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++)
+			{
+				if (i2c_transfer(i2c->adapter, msg, 2) == 2)
+				{
+					retval = length;
+					break;
+				}
+				dev_dbg(rmi4_data->pdev->dev.parent,
+					"%s: I2C retry %d\n",
+					__func__, retry + 1);
+				check_times += 1;
+				msleep(20);
+			}
+			if (retry == SYN_I2C_RETRY_TIMES)
+			{
+				dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: I2C read over retry limit\n",
 				__func__);
 		retval = -EIO;
 	}
+		}
+		else
+		{
+			dev_dbg(rmi4_data->pdev->dev.parent,
+				"%s: no hardware reset support\n",
+				__func__);
+			retval = -EIO;
+		}
+	}
+	if(check_times != 0)
+		dev_err(rmi4_data->pdev->dev.parent,
+			"%s: i2c read error, retry %d times\n",
+			__func__, check_times);
+/*} FIH, Hubert, 20151014, error handle for touch IC and I2C*/
 
 exit:
 	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
@@ -133,7 +188,7 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data, unsigned short length)
 {
 	int retval;
-	unsigned char retry;
+	unsigned char retry, check_times = 0;
 	unsigned char buf[length + 1];
 	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
 	struct i2c_msg msg[] = {
@@ -161,18 +216,56 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 			retval = length;
 			break;
 		}
-		dev_err(rmi4_data->pdev->dev.parent,
+		dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: I2C retry %d\n",
 				__func__, retry + 1);
+		check_times += 1;
 		msleep(20);
 	}
 
 	if (retry == SYN_I2C_RETRY_TIMES) {
-		dev_err(rmi4_data->pdev->dev.parent,
+		dev_dbg(rmi4_data->pdev->dev.parent,
+				"%s: I2C write over retry limit\n",
+				__func__);
+/*FIH, Hubert, 20151014, error handle for touch IC and I2C {*/
+		if (rmi4_data->hw_if->board_data->reset_gpio >= 0)
+		{
+			synaptics_rmi4_harware_reset(rmi4_data);
+
+			for (retry = 0; retry < SYN_I2C_RETRY_TIMES; retry++)
+			{
+				if (i2c_transfer(i2c->adapter, msg, 1) == 1)
+				{
+					retval = length;
+					break;
+				}
+				dev_dbg(rmi4_data->pdev->dev.parent,
+					"%s: I2C retry %d\n",
+					__func__, retry + 1);
+				check_times += 1;
+				msleep(20);
+			}
+			if (retry == SYN_I2C_RETRY_TIMES)
+			{
+				dev_dbg(rmi4_data->pdev->dev.parent,
 				"%s: I2C write over retry limit\n",
 				__func__);
 		retval = -EIO;
 	}
+		}
+		else
+		{
+			dev_dbg(rmi4_data->pdev->dev.parent,
+				"%s: no hardware reset support\n",
+				__func__);
+			retval = -EIO;
+		}
+	}
+	if(check_times != 0)
+		dev_err(rmi4_data->pdev->dev.parent,
+			"%s: i2c write error, retry %d times\n",
+			__func__, check_times);
+/*} FIH, Hubert, 20151014, error handle for touch IC and I2C*/
 
 exit:
 	mutex_unlock(&rmi4_data->rmi4_io_ctrl_mutex);
@@ -310,6 +403,9 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 	u32 temp_val, num_buttons;
 	u32 button_map[MAX_NUMBER_OF_BUTTONS];
 	int rc, i;
+/*  NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+	int blen = 0;
+/* end  NBQ - EricHsieh - [06-23] */
 
 	rmi4_pdata->x_flip = of_property_read_bool(np, "synaptics,x-flip");
 	rmi4_pdata->y_flip = of_property_read_bool(np, "synaptics,y-flip");
@@ -320,6 +416,17 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 	rmi4_pdata->resume_in_workqueue = of_property_read_bool(np,
 			"synaptics,resume-in-workqueue");
 
+/*  NBQ - EricHsieh - [06-601] - [Touch] Wrong device firmware id with ftm image */
+	rmi4_pdata->power_delay_ms = 0;
+	rc = of_property_read_u32(np, "synaptics,power-delay-ms", &temp_val);
+	if (!rc)
+		rmi4_pdata->power_delay_ms = temp_val;
+	else if (rc != -EINVAL) {
+		dev_err(dev, "Unable to read power delay\n");
+		return rc;
+	}
+/* end  NBQ - EricHsieh - [06-601] */
+
 	rmi4_pdata->reset_delay_ms = RESET_DELAY;
 	rc = of_property_read_u32(np, "synaptics,reset-delay-ms", &temp_val);
 	if (!rc)
@@ -328,6 +435,17 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 		dev_err(dev, "Unable to read reset delay\n");
 		return rc;
 	}
+
+/*  NBQ - EricHsieh - [06-619] - [Touch] Porting synaptics touch to Android L 1241 */
+	rmi4_pdata->init_delay_ms = 0;
+	rc = of_property_read_u32(np, "synaptics,init-delay-ms", &temp_val);
+	if (!rc)
+		rmi4_pdata->init_delay_ms = temp_val;
+	else if (rc != -EINVAL) {
+		dev_err(dev, "Unable to read init delay\n");
+		return rc;
+	}
+/* end  NBQ - EricHsieh - [06-619] */
 
 	rmi4_pdata->fw_name = "PRXXX_fw.img";
 	rc = of_property_read_string(np, "synaptics,fw-name",
@@ -342,6 +460,10 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 			"synaptics,reset-gpio", 0, &rmi4_pdata->reset_flags);
 	rmi4_pdata->irq_gpio = of_get_named_gpio_flags(np,
 			"synaptics,irq-gpio", 0, &rmi4_pdata->irq_flags);
+/*FIH, Hubert, 20150818, porting touch (enable_gpio) {*/
+	rmi4_pdata->enable_gpio = of_get_named_gpio_flags(np,
+			"synaptics,enable-gpio", 0, &rmi4_pdata->enable_flags);
+/*} FIH, Hubert, 20150818, porting touch (enable_gpio)*/
 
 	rc = synaptics_dsx_get_dt_coords(dev, "synaptics,display-coords",
 				rmi4_pdata, NULL);
@@ -392,6 +514,21 @@ static int synaptics_dsx_parse_dt(struct device *dev,
 			return -EINVAL;
 		}
 	}
+
+/*  NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+	rmi4_pdata->upper_bound = of_get_property(np, "synaptics,upper-bound", &blen);
+	if (!rmi4_pdata->upper_bound) {
+		pr_err("[Synaptics]: ==Can not read the upper bound array\n");
+	}
+	rmi4_pdata->upper_bound_array_size = blen / 2;
+
+	rmi4_pdata->lower_bound = of_get_property(np, "synaptics,lower-bound", &blen);
+	if (!rmi4_pdata->lower_bound) {
+		pr_err("[Synaptics]: ==Can not read the lower bound array\n");
+	}
+	rmi4_pdata->lower_bound_array_size = blen / 2;
+/* end  NBQ - EricHsieh - [06-23] */
+
 	return 0;
 }
 #else

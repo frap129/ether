@@ -70,6 +70,10 @@ struct synaptics_dsx_board_data {
 	bool x_flip;
 	bool y_flip;
 	bool swap_axes;
+/*FIH, Hubert, 20150818, porting touch (enable_gpio) {*/
+	int enable_gpio;
+	u32 enable_flags;
+/*} FIH, Hubert, 20150818, porting touch (enable_gpio)*/
 	int irq_gpio;
 	u32 irq_flags;
 	int power_gpio;
@@ -81,6 +85,9 @@ struct synaptics_dsx_board_data {
 	unsigned int panel_y;
 	unsigned int power_delay_ms;
 	unsigned int reset_delay_ms;
+/* NBQ - EricHsieh - [06-619] - [Touch] Porting synaptics touch to Android L 1241 */
+	unsigned int init_delay_ms;
+/* end NBQ - EricHsieh - [06-619] */
 	unsigned int reset_active_ms;
 	unsigned int byte_delay_us;
 	unsigned int block_delay_us;
@@ -101,6 +108,13 @@ struct synaptics_dsx_board_data {
 	bool detect_device;
 	bool resume_in_workqueue;
 	const char *fw_name;
+/* NBQ - EricHsieh - [06-23] - [Touch] Synaptics touch driver porting */
+	int rx_of_key;
+	const char *upper_bound;
+	const char *lower_bound;
+	unsigned int upper_bound_array_size;
+	unsigned int lower_bound_array_size;
+/* end NBQ - EricHsieh - [06-23] */
 };
 
 #endif
