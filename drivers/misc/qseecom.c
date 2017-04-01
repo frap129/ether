@@ -298,6 +298,11 @@ static int __qseecom_enable_clk(enum qseecom_ce_hw_instance ce);
 static void __qseecom_disable_clk(enum qseecom_ce_hw_instance ce);
 static int __qseecom_init_clk(enum qseecom_ce_hw_instance ce);
 
+#ifdef CONFIG_MACH_FIH_NBQ
+int fpc_clk_set(bool enable);
+int irq_active_toggle_safe_synced(bool request_active);
+#endif
+
 static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			const void *req_buf, void *resp_buf)
 {
@@ -1687,6 +1692,19 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		goto unload_exit;
 	}
 
+#ifdef CONFIG_MACH_FIH_NBQ
+	if ((!memcmp(data->client.app_name, "fpctzappfingerprint",
+			(sizeof("fpctzappfingerprint")-1)))) {
+		pr_err("Before unload fpctzappfingerprint need to enable fpc clk\n");
+		if (fpc_clk_set(true) != 0) {
+			pr_err("Fail to enable fpc clk. Do not unload fpctzappfingerprint\n");
+			goto unload_exit;
+		}
+		if (irq_active_toggle_safe_synced(true) != 0)
+			pr_warn("Failed to enable FPC IRQ, ignoring.\n");
+	}
+#endif
+
 	if (data->client.app_id > 0) {
 		spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
 		list_for_each_entry(ptr_app, &qseecom.registered_app_list_head,
@@ -1731,6 +1749,14 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		ret = qseecom_scm_call(SCM_SVC_TZSCHEDULER, 1, &req,
 				sizeof(struct qseecom_unload_app_ireq),
 				&resp, sizeof(resp));
+
+#ifdef CONFIG_MACH_FIH_NBQ
+		if ((!memcmp(data->client.app_name, "fpctzappfingerprint",
+				(sizeof("fpctzappfingerprint")-1))))
+			if (irq_active_toggle_safe_synced(false) != 0)
+				pr_warn("Failed to disable FPC IRQ, ignoring.\n");
+#endif
+
 		if (ret) {
 			pr_err("scm_call to unload app (id = %d) failed\n",
 								req.app_id);
