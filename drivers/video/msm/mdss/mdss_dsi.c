@@ -29,6 +29,10 @@
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+extern ssize_t panel_print_status2(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
+
 #define XO_CLK_RATE	19200000
 
 static struct dsi_drv_cm_data shared_ctrl_data;
@@ -205,6 +209,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo = NULL; //JYLee added to cover bad IC power timing 20160418
 	int i = 0;
 
 	if (pdata == NULL) {
@@ -214,6 +219,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+	pinfo = &(ctrl_pdata->panel_data.panel_info); //JYLee added to cover bad IC power timing 20160418
 
 	for (i = 0; i < DSI_MAX_PM; i++) {
 		/*
@@ -231,6 +237,16 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 			goto error;
 		}
 	}
+//JYLee added to cover bad IC power timing 20160416 {
+	if (!pinfo->cont_splash_enabled) {
+		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+			gpio_set_value((ctrl_pdata->rst_gpio),
+				pdata->panel_info.rst_seq[i]);
+			if (pdata->panel_info.rst_seq[++i])
+				usleep(pinfo->rst_seq[i] * 1000);
+		}
+	}
+//JYLee added to cover bad IC power timing 20160416 }
 	if (ctrl_pdata->panel_bias_vreg) {
 		pr_debug("%s: Enable panel bias vreg. ndx = %d\n",
 		       __func__, ctrl_pdata->ndx);
@@ -693,6 +709,19 @@ static int mdss_dsi_update_panel_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 	return ret;
 }
 
+//JYLee added to force lp11 before reset to match spec 20160409 {
+void mdss_dsi_force_lp11(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	u32 tmp;
+
+	tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
+	tmp &= ~(1<<28);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
+	wmb();
+	pr_err("Force lp11\n");
+}
+//JYLee added to force lp11 before reset to match spec 20160409 }
+
 int mdss_dsi_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -893,6 +922,10 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		if (mdss_dsi_is_te_based_esd(ctrl_pdata))
 			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
+
+// FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {
+	panel_print_status2(ctrl_pdata);
+//} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade
 
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
