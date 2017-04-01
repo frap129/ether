@@ -41,6 +41,11 @@
 #define MAX_SSR_REASON_LEN	81U
 #define STOP_ACK_TIMEOUT_MS	1000
 
+/* FIH,Jimi,2015/08/29 add for support fih rere{ */
+//add modem failure reason
+char fih_failure_reason[MAX_SSR_REASON_LEN];
+/* FIH,Jimi,2015/08/29 add for support fih rere} */
+
 #define subsys_to_drv(d) container_of(d, struct modem_data, subsys_desc)
 
 static void log_modem_sfr(void)
@@ -61,6 +66,12 @@ static void log_modem_sfr(void)
 
 	strlcpy(reason, smem_reason, min(size, MAX_SSR_REASON_LEN));
 	pr_err("modem subsystem failure reason: %s.\n", reason);
+
+        /* FIH,Jimi,2015/08/29 add for support fih rere{*/
+        //add modem failure reason
+        strlcpy(fih_failure_reason, smem_reason, min(size, MAX_SSR_REASON_LEN));
+        //pr_err("fih get failure reason: %s.\n", fih_failure_reason);
+        /* FIH,Jimi,2015/08/29 add for support fih rere}*/
 
 	smem_reason[0] = '\0';
 	wmb();
