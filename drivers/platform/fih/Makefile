@@ -1,0 +1,15 @@
+obj-$(CONFIG_MACH_FIH) += fih_apr.o
+obj-$(CONFIG_MACH_FIH) += fih_blog.o
+obj-$(CONFIG_MACH_FIH) += fih_bset.o
+obj-$(CONFIG_MACH_FIH) += fih_last_blog.o
+obj-$(CONFIG_MACH_FIH) += fih_hwid.o
+obj-$(CONFIG_MACH_FIH) += fih_info.o
+obj-$(CONFIG_MACH_FIH) += fih_dram.o
+obj-$(CONFIG_MACH_FIH) += fih_sut.o
+obj-$(CONFIG_MACH_FIH) += fih_fver.o
+obj-$(CONFIG_MACH_FIH) += fih_e2p.o
+obj-$(CONFIG_MACH_FIH) += fih_cda.o
+obj-$(CONFIG_MACH_FIH) += fih_nv_rf.o
+obj-$(CONFIG_MACH_FIH) += fih_nv_cust.o
+obj-$(CONFIG_MACH_FIH) += fih_secboot.o
+obj-$(CONFIG_MACH_FIH) += fih_sensor.o
