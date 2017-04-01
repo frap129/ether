@@ -1,0 +1,17 @@
+# FIH configuration options
+
+config MACH_FIH
+	bool "FIH device"
+	depends on ARCH_MSM
+	help
+	  Support for FIH products
+
+menu "FIH board selection"
+
+config MACH_FIH_NBQ
+	bool "NBQ board"
+	select MACH_FIH
+	help
+	  Support for FIH NBQ variant
+
+endmenu

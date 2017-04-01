@@ -1,0 +1,91 @@
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../qcom/msm8992-pinctrl.dtsi"
+
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+		pmx_i2c_9 {
+			qcom,pins = <&gp 52>, <&gp 51>;
+			qcom,num-grp-pins = <2>;
+			qcom,pin-func = <4>;
+			label = "pmx_i2c_9";
+
+			i2c_9_active: i2c_9_active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+
+			i2c_9_sleep: i2c_9_sleep {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		pmx_lp55xx_en {
+			qcom,pins = <&gp 25>;
+			qcom,pin-func = <0>;
+			qcom,num-grp-pins = <1>;
+			label = "pmx_lp55xx_enble";
+
+			lp55xx_enble_active: active {
+				drive-strength = <2>;
+				bias-disable;
+			};
+
+			lp55xx_enble_suspend: suspend {
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		pmx_ts {
+			qcom,pins = <&gp 78>, <&gp 1>;
+		};
+
+		cam_sensor_mclk0_active {
+			cam_sensor_mclk0_active: cam_sensor_mclk0_active {
+				drive-strength = <3>;
+			};
+		};
+
+		cam_sensor_mclk0_suspend {
+			cam_sensor_mclk0_suspend: cam_sensor_mclk0_suspend {
+				drive-strength = <3>;
+			};
+		};
+
+		cam_sensor_mclk1_active {
+			cam_sensor_mclk1_active: cam_sensor_mclk1_active {
+				drive-strength = <4>;
+			};
+		};
+
+		cam_sensor_mclk1_suspend {
+			cam_sensor_mclk1_suspend: cam_sensor_mclk1_suspend {
+				drive-strength = <4>;
+			};
+		};
+
+		cam_sensor_mclk2_active {
+			cam_sensor_mclk2_active: cam_sensor_mclk2_active {
+				drive-strength = <4>;
+			};
+		};
+
+		cam_sensor_mclk2_suspend {
+			cam_sensor_mclk2_suspend: cam_sensor_mclk2_suspend {
+				drive-strength = <4>;
+			};
+		};
+	};
+};

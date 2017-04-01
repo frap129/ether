@@ -1,0 +1,24 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	devfreq_spdm_cpu {
+		qcom,bw-dwnstep = <5000>;
+		qcom,max-vote = <5000>;
+
+		/*max pl1 freq, max pl2 freq*/
+		qcom,pl-freqs = <280000000 350000000>;
+
+		/* pl1 low, pl1 high, pl2 low, pl2 high, pl3 low, pl3 high */
+		qcom,cci-response-time-us = <10000 10000 10000 10000 3000 3000>;
+	};
+};

@@ -1,0 +1,38 @@
+/* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&spmi_bus {
+	qcom,pmi8994@2 {
+		pmi8994_charger: qcom,qpnp-smbcharger {
+			qcom,thermal-mitigation = <3000 2000 1500 1200 0>;
+		};
+	};
+
+	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			qcom,ovp-mv = <21500>;
+			qcom,fs-curr-ua = <19000>;
+			qcom,led-strings-list = [00 01];
+			qcom,en-cabc;
+		};
+
+		qcom,leds@d000 {
+			/delete-node/ qcom,rgb_0;
+			/delete-node/ qcom,rgb_1;
+
+			qcom,rgb_2 {
+				linux,name = "test_blue";
+				/delete-property/ linux,default-trigger;
+			};
+		};
+	};
+};
