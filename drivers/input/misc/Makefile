@@ -89,3 +89,4 @@ endif
 
 obj-$(CONFIG_SENSORS_MC3430)	+= mc3xxx.o
 obj-$(CONFIG_SENSORS_ISL29044A)	+= isl29044a.o
+obj-$(CONFIG_FIH_FPC_FP_TEE)	+= fpc1020_tee.o

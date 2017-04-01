@@ -863,5 +863,11 @@ config SENSORS_ISL29044A
 	help
 	 This option enables support for the INTERSIL ISL29044A P/L sensor.
 
+config FIH_FPC_FP_TEE
+	tristate "FPC fingerprint TEE support"
+	depends on SPI_QUP
+	depends on FB
+	help
+	  If you say yes here, you get support for FPC fingerprint TEE driver.
 endif
 
