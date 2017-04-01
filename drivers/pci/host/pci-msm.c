@@ -970,6 +970,13 @@ static void pcie_phy_init(struct msm_pcie_dev_t *dev)
 	PCIE_DBG(dev, "RC%d: Initializing 20nm QMP phy - 19.2MHz\n",
 		dev->rc_idx);
 
+#ifdef CONFIG_MACH_FIH_NBQ
+	msm_pcie_write_reg(dev->phy, PCIE_PHY_SW_RESET, 0x01);
+	msm_pcie_write_reg(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x0);
+	wmb();
+	udelay(1000);
+#endif
+
 	msm_pcie_write_reg(dev->phy, PCIE_PHY_POWER_DOWN_CONTROL, 0x03);
 
 	msm_pcie_write_reg(dev->phy, QSERDES_COM_SYSCLK_EN_SEL_TXBAND, 0x08);
