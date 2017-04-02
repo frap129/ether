@@ -182,6 +182,10 @@ static struct qpnp_vadc_rscale_fn adc_vadc_rscale_fn[] = {
 	[SCALE_RVADC_ABSOLUTE] = {qpnp_vadc_absolute_rthr},
 };
 
+#ifdef CONFIG_FIH_BATTERY
+struct qpnp_vadc_chip *fih_vadc = NULL;
+#endif
+
 static int32_t qpnp_vadc_read_reg(struct qpnp_vadc_chip *vadc, int16_t reg,
 								u8 *data)
 {
@@ -2118,6 +2122,24 @@ int32_t qpnp_vadc_end_channel_monitor(struct qpnp_vadc_chip *chip)
 }
 EXPORT_SYMBOL(qpnp_vadc_end_channel_monitor);
 
+#ifdef CONFIG_FIH_BATTERY
+int fih_get_usbin_voltage_now(void)
+{
+	int rc = -1;
+	struct qpnp_vadc_result result;
+
+	rc = qpnp_vadc_read(fih_vadc, 0, &result);
+
+	if (rc) {
+		pr_err("FIH VADC read error with %d\n", rc);
+		return 0;
+	}
+
+	return result.physical;
+}
+EXPORT_SYMBOL(fih_get_usbin_voltage_now);
+#endif
+
 static ssize_t qpnp_adc_show(struct device *dev,
 			struct device_attribute *devattr, char *buf)
 {
@@ -2402,6 +2424,11 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 	}
 
 	vadc->vadc_iadc_sync_lock = false;
+
+#ifdef CONFIG_FIH_BATTERY
+	fih_vadc = vadc;
+#endif
+
 	dev_set_drvdata(&spmi->dev, vadc);
 	list_add(&vadc->list, &qpnp_vadc_device_list);
 

@@ -76,6 +76,7 @@
 #define BCL_MA_TO_ADC(_current, _adc_val) {		\
 	_adc_val = (u8)((_current) * 100 / 976);	\
 }
+static bool fih_is_fg_ready = false;
 
 /* Debug Flag Definitions */
 enum {
@@ -199,8 +200,8 @@ enum fg_mem_data_index {
 static struct fg_mem_setting settings[FG_MEM_SETTING_MAX] = {
 	/*       ID                    Address, Offset, Value*/
 	SETTING(SOFT_COLD,       0x454,   0,      100),
-	SETTING(SOFT_HOT,        0x454,   1,      400),
-	SETTING(HARD_COLD,       0x454,   2,      50),
+	SETTING(SOFT_HOT,        0x454,   1,      430),
+	SETTING(HARD_COLD,       0x454,   2,      0),
 	SETTING(HARD_HOT,        0x454,   3,      450),
 	SETTING(RESUME_SOC,      0x45C,   1,      0),
 	SETTING(BCL_LM_THRESHOLD, 0x47C,   2,      50),
@@ -240,7 +241,9 @@ static struct fg_mem_data fg_data[FG_DATA_MAX] = {
 	DATA(BATT_ID_INFO,    0x594,   3,      1,     -EINVAL),
 };
 
-static int fg_debug_mask;
+struct fg_chip *fih_chip = NULL;
+
+static int fg_debug_mask = 0x04;
 module_param_named(
 	debug_mask, fg_debug_mask, int, S_IRUSR | S_IWUSR
 );
@@ -1215,6 +1218,7 @@ static int get_monotonic_soc_raw(struct fg_chip *chip)
 #define MISSING_CAPACITY	100
 #define FULL_CAPACITY		100
 #define FULL_SOC_RAW		0xFF
+extern void fih_set_alert_info(u8 is_alert, bool byte_location, u8 val);
 static int get_prop_capacity(struct fg_chip *chip)
 {
 	int msoc;
@@ -1222,7 +1226,13 @@ static int get_prop_capacity(struct fg_chip *chip)
 	if (chip->battery_missing)
 		return MISSING_CAPACITY;
 	if (!chip->profile_loaded && !chip->use_otp_profile)
+	{
+		fih_is_fg_ready = false;
 		return DEFAULT_CAPACITY;
+	}
+
+	fih_is_fg_ready = true;
+
 	if (chip->charge_full)
 		return FULL_CAPACITY;
 	if (chip->soc_empty) {
@@ -1308,6 +1318,18 @@ static int set_prop_jeita_temp(struct fg_chip *chip,
 
 	return rc;
 }
+
+void fih_set_jeita_temp(int decidegc)
+{
+	set_prop_jeita_temp(fih_chip, FG_MEM_SOFT_HOT, decidegc);
+}
+EXPORT_SYMBOL(fih_set_jeita_temp);
+
+int fih_get_jeita_temp(void)
+{
+	return get_prop_jeita_temp(fih_chip, FG_MEM_SOFT_HOT);
+}
+EXPORT_SYMBOL(fih_get_jeita_temp);
 
 #define EXTERNAL_SENSE_SELECT		0x4AC
 #define EXTERNAL_SENSE_OFFSET		0x2
@@ -1555,6 +1577,16 @@ resched:
 	}
 	fg_relax(&chip->update_sram_wakeup_source);
 }
+
+int fih_get_now_temp(void)
+{
+	int unused;
+	update_sram_data(fih_chip, &unused);
+	msleep(50);
+
+	return get_sram_prop_now(fih_chip, FG_DATA_BATT_TEMP);
+}
+EXPORT_SYMBOL(fih_get_now_temp);
 
 #define SRAM_TIMEOUT_MS			3000
 static void update_sram_data_work(struct work_struct *work)
@@ -2082,6 +2114,7 @@ static void battery_age_work(struct work_struct *work)
 static enum power_supply_property fg_power_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_CAPACITY_RAW,
+	POWER_SUPPLY_PROP_CAPACITY_MONOTONIC_RAW,
 	POWER_SUPPLY_PROP_CURRENT_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_OCV,
@@ -2125,6 +2158,9 @@ static int fg_power_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_RAW:
 		val->intval = get_sram_prop_now(chip, FG_DATA_BATT_SOC);
+		break;
+	case POWER_SUPPLY_PROP_CAPACITY_MONOTONIC_RAW:
+		val->intval = get_monotonic_soc_raw(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW_ERROR:
 		val->intval = get_sram_prop_now(chip, FG_DATA_VINT_ERR);
@@ -3052,6 +3088,7 @@ static irqreturn_t fg_mem_avail_irq_handler(int irq, void *_chip)
 	return IRQ_HANDLED;
 }
 
+extern void fih_HVDCP_translate_timer(void);
 static irqreturn_t fg_soc_irq_handler(int irq, void *_chip)
 {
 	struct fg_chip *chip = _chip;
@@ -3081,6 +3118,8 @@ static irqreturn_t fg_soc_irq_handler(int irq, void *_chip)
 	schedule_work(&chip->update_esr_work);
 	if (chip->charge_full)
 		schedule_work(&chip->charge_full_work);
+
+	fih_HVDCP_translate_timer();
 	return IRQ_HANDLED;
 }
 
@@ -3890,6 +3929,8 @@ static void check_empty_work(struct work_struct *work)
 		if (fg_debug_mask & FG_STATUS)
 			pr_info("EMPTY SOC high\n");
 		chip->soc_empty = true;
+		schedule_work(&chip->dump_sram);
+		fih_set_alert_info(BIT(0), 1, BIT(3));
 		if (chip->power_supply_registered)
 			power_supply_changed(&chip->bms_psy);
 	}
@@ -5219,6 +5260,16 @@ static void delayed_init_work(struct work_struct *work)
 	pr_debug("FG: HW_init success\n");
 }
 
+
+static ssize_t get_fih_fg_ready(struct device *dev,
+			       struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", fih_is_fg_ready);
+}
+
+static DEVICE_ATTR(fg_ready, 0444,
+	get_fih_fg_ready, NULL);
+
 static int fg_probe(struct spmi_device *spmi)
 {
 	struct device *dev = &(spmi->dev);
@@ -5227,6 +5278,7 @@ static int fg_probe(struct spmi_device *spmi)
 	struct resource *resource;
 	u8 subtype, reg;
 	int rc = 0;
+	int hard_hot = 0, hard_cold = 0, soft_hot = 0, soft_cold = 0;
 
 	if (!spmi) {
 		pr_err("no valid spmi pointer\n");
@@ -5422,6 +5474,15 @@ static int fg_probe(struct spmi_device *spmi)
 		chip->revision[ANA_MAJOR], chip->revision[ANA_MINOR],
 		chip->pmic_subtype);
 
+	device_create_file(chip->dev, &dev_attr_fg_ready);
+
+	hard_hot = get_prop_jeita_temp(chip, FG_MEM_HARD_HOT);
+	soft_hot = get_prop_jeita_temp(chip, FG_MEM_SOFT_HOT);
+	hard_cold = get_prop_jeita_temp(chip, FG_MEM_HARD_COLD);
+	soft_cold = get_prop_jeita_temp(chip, FG_MEM_SOFT_COLD);
+	pr_info("%s HOT = %d WARM = %d COLD = %d COOL = %d\n", __func__,hard_hot, soft_hot, hard_cold, soft_cold);
+
+	fih_chip = chip;
 	return rc;
 
 power_supply_unregister:

@@ -563,6 +563,17 @@ config MSM_BCL_PERIPHERAL_CTL
 	  provides routines to configure and monitor the BCL
 	  PMIC peripheral.
 
+config FIH_DISABLE_SMBCHG_PARALLEL
+	bool "Disable smchg parallel"
+	help
+	  Say Y here to disable smb1357 parallel chaging
+
+config FIH_BATTERY
+	bool "FIH battery/charging information monitor driver"
+	help
+	  Say Y here to enable this fih battery driver.
+	  This driver provide an overall status to monitor charging/battery
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY
