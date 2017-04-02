@@ -98,6 +98,10 @@ static const char longname[] = "Gadget Android";
 #define MIDI_BUFFER_SIZE    1024
 #define MIDI_QUEUE_LENGTH   32
 
+#ifdef CONFIG_MACH_FIH_NBQ
+#define FIH_CHARGER_DETECT
+#endif
+
 struct android_usb_function {
 	char *name;
 	void *config;
@@ -394,6 +398,9 @@ enum android_device_state {
 	USB_RESUMED
 };
 
+#ifdef FIH_CHARGER_DETECT
+extern void set_charger_type(int);
+#endif
 static void android_work(struct work_struct *data)
 {
 	struct android_dev *dev = container_of(data, struct android_dev, work);
@@ -472,6 +479,10 @@ static void android_work(struct work_struct *data)
 			last_uevent = next_state;
 		}
 		pr_info("%s: sent uevent %s\n", __func__, uevent_envp[0]);
+#ifdef FIH_CHARGER_DETECT
+		if (uevent_envp == configured)
+			set_charger_type(4); // 4: POWER_SUPPLY_TYPE_USB
+#endif
 	} else {
 		pr_info("%s: did not send uevent (%d %d %pK)\n", __func__,
 			 dev->connected, dev->sw_connected, cdev->config);

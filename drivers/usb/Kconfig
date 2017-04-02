@@ -93,6 +93,8 @@ source "drivers/usb/dwc3/Kconfig"
 
 source "drivers/usb/chipidea/Kconfig"
 
+source "drivers/usb/hd3ss3220/Kconfig"
+
 comment "USB port drivers"
 
 if USB
