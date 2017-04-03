@@ -50,6 +50,11 @@
 
 #include "queue.h"
 
+/* FIH,Jimi,2015/08/19 add for version emmcinfo{*/
+#include <linux/string.h>
+#include "../../../arch/arm64/kernel/fih/fih_emmc.h"
+/* FIH,Jimi,2015/08/19 add for version emmcinfo}*/
+
 MODULE_ALIAS("mmc:block");
 #ifdef MODULE_PARAM_PREFIX
 #undef MODULE_PARAM_PREFIX
@@ -1149,17 +1154,23 @@ static int mmc_blk_cmd_error(struct request *req, const char *name, int error,
 			"%s: response CRC error sending %s command, card status %#x\n",
 			req->rq_disk->disk_name,
 			name, status);
+		pr_err("BBox;%s: %s sending %s command, card status %#x\n",
+			req->rq_disk->disk_name, "response CRC error",
+			name, status);
 		return ERR_RETRY;
 
 	case -ETIMEDOUT:
 		pr_err_ratelimited(
 			"%s: timed out sending %s command, card status %#x\n",
 			req->rq_disk->disk_name, name, status);
+		pr_err("BBox;%s: %s sending %s command, card status %#x\n",
+			req->rq_disk->disk_name, "timed out", name, status);
 
 		/* If the status cmd initially failed, retry the r/w cmd */
 		if (!status_valid) {
 			pr_err_ratelimited("%s: status not valid, retrying timeout\n",
 				req->rq_disk->disk_name);
+			pr_err("BBox;%s: status not valid, retrying timeout\n", req->rq_disk->disk_name);
 			return ERR_RETRY;
 		}
 		/*
@@ -1171,6 +1182,7 @@ static int mmc_blk_cmd_error(struct request *req, const char *name, int error,
 			pr_err_ratelimited(
 				"%s: command error, retrying timeout\n",
 				req->rq_disk->disk_name);
+			pr_err("BBox;%s: command error, retrying timeout\n", req->rq_disk->disk_name);
 			return ERR_RETRY;
 		}
 
@@ -1178,12 +1190,15 @@ static int mmc_blk_cmd_error(struct request *req, const char *name, int error,
 		pr_err_ratelimited(
 			"%s: not retrying timeout\n",
 			req->rq_disk->disk_name);
+		pr_err("BBox;%s: not retrying timeout\n", req->rq_disk->disk_name);
 		return ERR_ABORT;
 
 	default:
 		/* We don't understand the error code the driver gave us */
 		pr_err_ratelimited(
 			"%s: unknown error %d sending read/write command, card status %#x\n",
+		       req->rq_disk->disk_name, error, status);
+	    pr_err("BBox;%s: unknown error %d sending read/write command, card status %#x\n",
 		       req->rq_disk->disk_name, error, status);
 		return ERR_ABORT;
 	}
@@ -1230,6 +1245,8 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 		prev_cmd_status_valid = false;
 		pr_err("%s: error %d sending status command, %sing\n",
 		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
+		pr_err("BBox;%s: error %d sending status command, %sing\n",
+		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
 	}
 
 	/* We couldn't get a response from the card.  Give up. */
@@ -1263,10 +1280,12 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 	if (R1_CURRENT_STATE(status) == R1_STATE_DATA ||
 	    R1_CURRENT_STATE(status) == R1_STATE_RCV) {
 		err = send_stop(card, &stop_status);
-		if (err)
+		if (err) {
 			pr_err("%s: error %d sending stop command\n",
 			       req->rq_disk->disk_name, err);
-
+			pr_err("BBox;%s: error %d sending stop command\n",
+			       req->rq_disk->disk_name, err);
+		}
 		/*
 		 * If the stop cmd also timed out, the card is probably
 		 * not present, so abort.  Other errors are bad news too.
@@ -1302,7 +1321,9 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 	pr_err("%s: error %d sending stop command, original cmd response %#x, card status %#x\n",
 	       req->rq_disk->disk_name, brq->stop.error,
 	       brq->cmd.resp[0], status);
-
+	pr_err("BBox;%s: error %d sending stop command, original cmd response %#x, card status %#x\n",
+	       req->rq_disk->disk_name, brq->stop.error,
+	       brq->cmd.resp[0], status);
 	/*
 	 * Subsitute in our own stop status as this will give the error
 	 * state which happened during the execution of the r/w command.
@@ -1587,6 +1608,8 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	if (brq->cmd.resp[0] & CMD_ERRORS) {
 		pr_err("%s: r/w command failed, status = %#x\n",
 		       req->rq_disk->disk_name, brq->cmd.resp[0]);
+		pr_err("BBox;%s: r/w command failed, status = %#x\n",
+		       req->rq_disk->disk_name, brq->cmd.resp[0]);
 		return MMC_BLK_ABORT;
 	}
 
@@ -1613,6 +1636,8 @@ static int mmc_blk_err_check(struct mmc_card *card,
 			if (err) {
 				pr_err("%s: error %d requesting status\n",
 				       req->rq_disk->disk_name, err);
+				pr_err("BBox;%s: error %d requesting status\n",
+				       req->rq_disk->disk_name, err);
 				return MMC_BLK_CMD_ERR;
 			}
 
@@ -1628,6 +1653,9 @@ static int mmc_blk_err_check(struct mmc_card *card,
 			 */
 			if (time_after(jiffies, timeout)) {
 				pr_err("%s: Card stuck in programming state!"\
+					" %s %s\n", mmc_hostname(card->host),
+					req->rq_disk->disk_name, __func__);
+				pr_err("BBox;%s: Card stuck in programming state!"\
 					" %s %s\n", mmc_hostname(card->host),
 					req->rq_disk->disk_name, __func__);
 
@@ -1651,6 +1679,11 @@ static int mmc_blk_err_check(struct mmc_card *card,
 
 	if (brq->data.error) {
 		pr_err("%s: error %d transferring data, sector %u, nr %u, cmd response %#x, card status %#x\n",
+		       req->rq_disk->disk_name, brq->data.error,
+		       (unsigned)blk_rq_pos(req),
+		       (unsigned)blk_rq_sectors(req),
+		       brq->cmd.resp[0], brq->stop.resp[0]);
+		pr_err("BBox;%s: error %d transferring data, sector %u, nr %u, cmd response %#x, card status %#x\n",
 		       req->rq_disk->disk_name, brq->data.error,
 		       (unsigned)blk_rq_pos(req),
 		       (unsigned)blk_rq_sectors(req),
@@ -3296,6 +3329,11 @@ static int mmc_blk_probe(struct mmc_card *card)
 {
 	struct mmc_blk_data *md, *part_md;
 	char cap_str[10];
+        /* FIH,Jimi,2015/08/19 add for version emmcinfo{*/
+        char buf[FIH_EMMC_SIZE];
+        unsigned int max_count = 0;
+        unsigned int sec_count = 0;
+        /* FIH,Jimi,2015/08/19 add for version emmcinfo}*/
 
 	/*
 	 * Check that the card supports the command class(es) we need.
@@ -3312,6 +3350,49 @@ static int mmc_blk_probe(struct mmc_card *card)
 	pr_info("%s: %s %s %s %s\n",
 		md->disk->disk_name, mmc_card_id(card), mmc_card_name(card),
 		cap_str, md->read_only ? "(ro)" : "");
+
+        /* FIH,Jimi,2015/08/19 add for version emmcinfo{*/
+        if (0 == strcmp("mmcblk0", md->disk->disk_name))
+        {
+                switch (card->cid.manfid) {
+                        case 0x02: sprintf(buf, "Sandisk"); break;
+                        case 0x11: sprintf(buf, "Toshiba"); break;
+                        case 0x15: sprintf(buf, "Samsung"); break;
+                        case 0x45: sprintf(buf, "Sandisk"); break;
+                        case 0x70: sprintf(buf, "Kingston"); break;
+                        case 0x90: sprintf(buf, "Hynix"); break;
+                        case 0xFE: sprintf(buf, "Micron"); break;
+                        default:   sprintf(buf, "Unknown"); break;
+                }
+
+                switch (card->ext_csd.rev) {
+                        case 0x00: strcat(buf, " 4.0"); break;
+                        case 0x01: strcat(buf, " 4.1"); break;
+                        case 0x02: strcat(buf, " 4.2"); break;
+                        case 0x03: strcat(buf, " 4.3"); break;
+                        case 0x04: strcat(buf, " 4.4"); break;
+                        case 0x05: strcat(buf, " 4.41"); break;
+                        case 0x06: strcat(buf, " 4.5"); break;
+                        default: sprintf(buf, "%s 0x%x", buf, card->ext_csd.rev);break;
+                }
+
+                sec_count =
+                  + ((card->ext_csd.raw_sectors[3]) << 24)
+                  + ((card->ext_csd.raw_sectors[2]) << 16)
+                  + ((card->ext_csd.raw_sectors[1]) <<  8)
+                  + (card->ext_csd.raw_sectors[0]);
+
+                max_count = 1 << 21; /* 1GB */
+                while (max_count < sec_count) {
+                        max_count = max_count << 1;
+                }
+                sprintf(buf, "%s %dGB", buf, (max_count >> 21));
+
+                sprintf(buf, "%s 0x%x%x", buf, card->cid.fwrev, card->cid.hwrev);
+
+                fih_emmc_setup(buf);
+        }
+        /* FIH,Jimi,2015/08/19 add for version emmcinfo}*/
 
 	if (mmc_blk_alloc_parts(card, md))
 		goto out;

@@ -101,6 +101,13 @@ static int msm8994_auxpcm_rate = 8000;
 
 static struct platform_device *spdev;
 static int ext_us_amp_gpio = -1;
+
+//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+static int spk_sel_gpio=-1;
+#endif
+//weihung [NBQM-61]porting aduio function
+
 static int msm8994_spk_control = 1;
 static int msm_slim_0_rx_ch = 1;
 static int msm_slim_0_tx_ch = 1;
@@ -176,7 +183,11 @@ static struct wcd9xxx_mbhc_config mbhc_cfg = {
 	.anc_micbias = MBHC_MICBIAS2,
 	.mclk_cb_fn = msm_snd_enable_codec_ext_clk,
 	.mclk_rate = TOMTOM_EXT_CLK_RATE,
-	.gpio_level_insert = 1,
+	//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+	.gpio_level_insert = 0,//weihung
+#endif
+    //weihung [NBQM-61]porting aduio function
 	.detect_extn_cable = true,
 	.micbias_enable_flags = 1 << MBHC_MICBIAS_ENABLE_THRESHOLD_HEADSET,
 	.insert_detect = true,
@@ -208,6 +219,19 @@ static struct afe_clk_cfg mi2s_tx_clk = {
 	Q6AFE_LPASS_MODE_CLK1_VALID,
 	0,
 };
+//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+static struct afe_clk_cfg mi2s_rx_clk = {
+	AFE_API_VERSION_I2S_CONFIG,
+	Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ,
+	Q6AFE_LPASS_OSR_CLK_DISABLE,
+	Q6AFE_LPASS_CLK_SRC_INTERNAL,
+	Q6AFE_LPASS_CLK_ROOT_DEFAULT,
+	Q6AFE_LPASS_MODE_CLK1_VALID,
+	0,
+};
+#endif
+//weihung [NBQM-61]porting aduio function
 
 static inline int param_is_mask(int p)
 {
@@ -1177,7 +1201,8 @@ static int msm_proxy_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	rate->min = rate->max = 48000;
 	return 0;
 }
-
+//weihung [NBQM-61]porting aduio function
+#if 0
 static int msm8994_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -1199,6 +1224,8 @@ static int msm8994_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
+//weihung [NBQM-61]porting aduio function
 
 static int msm_set_pinctrl(struct msm_pinctrl_info *pinctrl_info,
 				enum pinctrl_pin_state new_state)
@@ -1508,6 +1535,13 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					SNDRV_PCM_HW_PARAM_CHANNELS);
 
 	pr_debug("%s: channel:%d\n", __func__, msm_pri_mi2s_tx_ch);
+
+   //weihung [NBQM-61]porting aduio function
+	#ifdef CONFIG_FIH_NBQ_AUDIO
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, SNDRV_PCM_FORMAT_S16_LE);
+	#endif
+   //weihung [NBQM-61]porting aduio function
+
 	rate->min = rate->max = SAMPLING_RATE_48KHZ;
 	channels->min = channels->max = msm_pri_mi2s_tx_ch;
 	return 0;
@@ -1585,6 +1619,81 @@ static struct snd_soc_ops msm8994_mi2s_be_ops = {
 	.startup = msm8994_mi2s_snd_startup,
 	.shutdown = msm8994_mi2s_snd_shutdown,
 };
+
+//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+static int msm8994_mi2s_rx_snd_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = &pdata->pinctrl_info;
+    //weihung [NBQM-61]porting aduio function
+	gpio_direction_output(spk_sel_gpio,1);
+    //weihung [NBQM-61]porting aduio function
+	pr_debug("%s: substream = %s  stream = %d\n", __func__,
+		substream->name, substream->stream);
+	if (pinctrl_info == NULL) {
+		pr_err("%s: pinctrl_info is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+	if (pdata->pri_mux != NULL)
+		iowrite32(I2S_PCM_SEL_I2S << I2S_PCM_SEL_OFFSET,
+				pdata->pri_mux);
+	else
+		pr_err("%s: MI2S muxsel addr is NULL\n", __func__);
+	ret = msm_set_pinctrl(pinctrl_info, STATE_MI2S_ACTIVE);
+	if (ret) {
+		pr_err("%s: MI2S TLMM pinctrl set failed with %d\n",
+			__func__, ret);
+		return ret;
+	}
+	mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_1_P536_MHZ;
+	mi2s_rx_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+	ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
+				&mi2s_rx_clk);
+	if (ret < 0) {
+		pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+		goto err;
+	}
+	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+	if (ret < 0)
+		pr_err("%s: set fmt cpu dai failed, err:%d\n", __func__, ret);
+err:
+	return ret;
+}
+static void msm8994_mi2s_rx_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8994_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = &pdata->pinctrl_info;
+	int ret = 0;
+    //weihung [NBQM-61]porting aduio function
+	gpio_direction_output(spk_sel_gpio,0);
+   	//weihung [NBQM-61]porting aduio function
+	pr_debug("%s: substream = %s  stream = %d\n", __func__,
+		substream->name, substream->stream);
+	mi2s_rx_clk.clk_val1 = Q6AFE_LPASS_IBIT_CLK_DISABLE;
+	mi2s_rx_clk.clk_set_mode = Q6AFE_LPASS_MODE_CLK1_VALID;
+	ret = afe_set_lpass_clock(AFE_PORT_ID_PRIMARY_MI2S_RX,
+				&mi2s_rx_clk);
+	if (ret < 0)
+		pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+	ret = msm_reset_pinctrl(pinctrl_info, STATE_MI2S_ACTIVE);
+	if (ret)
+		pr_err("%s: Reset pinctrl failed with %d\n",
+			__func__, ret);
+}
+static struct snd_soc_ops msm8994_mi2s_rx_be_ops = {
+	.startup = msm8994_mi2s_rx_snd_startup,
+	.shutdown = msm8994_mi2s_rx_snd_shutdown,
+};
+#endif
+//weihung [NBQM-61]porting aduio function
 
 static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
@@ -2089,21 +2198,21 @@ static void *def_codec_mbhc_cal(void)
 	btn_high = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg,
 					       MBHC_BTN_DET_V_BTN_HIGH);
 	btn_low[0] = -50;
-	btn_high[0] = 90;
-	btn_low[1] = 130;
-	btn_high[1] = 220;
-	btn_low[2] = 235;
-	btn_high[2] = 335;
-	btn_low[3] = 375;
-	btn_high[3] = 655;
-	btn_low[4] = 656;
-	btn_high[4] = 660;
-	btn_low[5] = 661;
-	btn_high[5] = 670;
-	btn_low[6] = 671;
-	btn_high[6] = 680;
-	btn_low[7] = 681;
-	btn_high[7] = 690;
+    btn_high[0] = 149;
+    btn_low[1] = 150;
+    btn_high[1] = 419;
+    btn_low[2] = 420;
+    btn_high[2] = 800;
+    btn_low[3] = 900;
+    btn_high[3] = 950;
+    btn_low[4] = 900;
+    btn_high[4] = 950;
+    btn_low[5] = 900;
+    btn_high[5] = 950;
+    btn_low[6] = 900;
+    btn_high[6] = 950;
+    btn_low[7] = 900;
+    btn_high[7] = 950;
 	n_ready = wcd9xxx_mbhc_cal_btn_det_mp(btn_cfg, MBHC_BTN_DET_N_READY);
 	n_ready[0] = 80;
 	n_ready[1] = 68;
@@ -3207,9 +3316,29 @@ static struct snd_soc_dai_link msm8994_common_dai_links[] = {
 		.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
 		.ops = &msm8994_mi2s_be_ops,
 		.ignore_suspend = 1,
-	}
-};
+	},
 
+//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+	{
+		.name = LPASS_BE_PRI_MI2S_RX,
+		.stream_name = "Primary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_RX,
+		.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
+		.ops = &msm8994_mi2s_rx_be_ops,
+		.ignore_suspend = 1,
+	}
+#endif
+//weihung [NBQM-61]porting aduio function
+
+};
+//weihung [NBQM-61]porting aduio function
+#if 0
 static struct snd_soc_dai_link msm8994_hdmi_dai_link[] = {
 /* HDMI BACK END DAI Link */
 	{
@@ -3230,6 +3359,8 @@ static struct snd_soc_dai_link msm8994_hdmi_dai_link[] = {
 static struct snd_soc_dai_link msm8994_dai_links[
 					 ARRAY_SIZE(msm8994_common_dai_links) +
 					 ARRAY_SIZE(msm8994_hdmi_dai_link)];
+#endif
+//weihung [NBQM-61]porting aduio function
 
 struct snd_soc_card snd_soc_card_msm8994 = {
 	.name		= "msm8994-tomtom-snd-card",
@@ -3430,6 +3561,9 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 	mbhc_cfg.mclk_rate = pdata->mclk_freq;
+
+//weihung [NBQM-61]porting aduio function
+#if 0
 	if (of_property_read_bool(pdev->dev.of_node, "qcom,hdmi-audio-rx")) {
 		dev_info(&pdev->dev, "%s: hdmi audio support present\n",
 				__func__);
@@ -3446,6 +3580,12 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 		card->dai_link	= msm8994_common_dai_links;
 		card->num_links	= ARRAY_SIZE(msm8994_common_dai_links);
 	}
+#else
+		card->dai_link	= msm8994_common_dai_links;
+		card->num_links	= ARRAY_SIZE(msm8994_common_dai_links);
+#endif
+//weihung [NBQM-61]porting aduio function
+
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&prim_auxpcm_rsc_ref, 0);
 	atomic_set(&sec_auxpcm_rsc_ref, 0);
@@ -3515,6 +3655,25 @@ static int msm8994_asoc_machine_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "msm8994_prepare_us_euro failed (%d)\n",
 			ret);
 
+//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+	spk_sel_gpio = of_get_named_gpio(pdev->dev.of_node,"fih,spk_sel_gpio",0);
+	pr_debug("%s %s spk_sel_gpio:%i",__func__,pdev->dev.of_node->full_name,spk_sel_gpio);
+	if(spk_sel_gpio>=0)
+	{
+	   if(gpio_request(spk_sel_gpio,"spk_sel_gpio"))
+	   {
+	     pr_debug(" %s %i",__func__,__LINE__);
+	   }
+	   else
+	  {
+	     pr_debug("%s %i",__func__,__LINE__);
+	     gpio_direction_output(spk_sel_gpio,0);
+	  }
+	}
+#endif
+//weihung [NBQM-61]porting aduio function
+
 	/* Parse pinctrl info from devicetree */
 	ret = msm_get_pinctrl(pdev);
 	if (!ret) {
@@ -3563,7 +3722,11 @@ static int msm8994_asoc_machine_remove(struct platform_device *pdev)
 
 	gpio_free(pdata->mclk_gpio);
 	gpio_free(pdata->us_euro_gpio);
-
+//weihung [NBQM-61]porting aduio function
+#ifdef CONFIG_FIH_NBQ_AUDIO
+	gpio_free(spk_sel_gpio);
+#endif
+//weihung [NBQM-61]porting aduio function
 	msm8994_audio_plug_device_remove(msm8994_liquid_dock_dev);
 
 	msm8994_audio_plug_device_remove(apq8094_db_ext_bp_out_dev);

@@ -24,6 +24,11 @@
 
 #define DWC3_IDEV_CHG_MAX 1500
 #define DWC3_HVDCP_CHG_MAX 1800
+#define DWC3_FLOA_CHG_MAX  500
+
+//Enable it for retry check usb type
+#define FIH_CHARGER_DETECT
+#define FIH_USB_RETRY_METHOD
 
 /*
  * Module param to override current drawn for DCP charger
@@ -57,6 +62,9 @@ struct dwc3_otg {
 	struct completion	dwc3_xcvr_vbus_init;
 	int			charger_retry_count;
 	int			vbus_retry_count;
+#ifdef FIH_USB_RETRY_METHOD
+	struct delayed_work	check_charger_status_work;
+#endif
 };
 
 /**
@@ -126,4 +134,9 @@ struct dwc3_ext_xceiv {
 /* for external transceiver driver */
 extern int dwc3_set_ext_xceiv(struct usb_otg *otg,
 				struct dwc3_ext_xceiv *ext_xceiv);
+
+#ifdef FIH_USB_RETRY_METHOD
+extern int check_charger_retry_count_func(int count, int reset);
+#endif
+
 #endif /* __LINUX_USB_DWC3_OTG_H */

@@ -3,6 +3,9 @@
 #
 ccflags-$(CONFIG_USB_GADGET_DEBUG) := -DDEBUG
 
+# READ_TOC command support MAC OS for Virtual CD-ROM
+ccflags-y += -DREAD_TOC_SUPPORT_MAC_OS
+
 obj-$(CONFIG_USB_GADGET)	+= udc-core.o
 obj-$(CONFIG_USB_LIBCOMPOSITE)	+= libcomposite.o
 libcomposite-y			:= usbstring.o config.o epautoconf.o

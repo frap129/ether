@@ -298,6 +298,11 @@ static int __qseecom_enable_clk(enum qseecom_ce_hw_instance ce);
 static void __qseecom_disable_clk(enum qseecom_ce_hw_instance ce);
 static int __qseecom_init_clk(enum qseecom_ce_hw_instance ce);
 
+int fpc_clk_set(bool enable);
+// TheCrazyLex@PA enable the FPC IRQ when unloading fpctzappfingerprint, disable IRQ state in sync with display state afterwards - start
+int irq_active_toggle_safe_synced(bool request_active);
+// TheCrazyLex@PA enable the FPC IRQ when unloading fpctzappfingerprint, disable IRQ state in sync with display state afterwards - end
+
 static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			const void *req_buf, void *resp_buf)
 {
@@ -1681,10 +1686,24 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 	bool found_app = false;
 	bool found_dead_app = false;
 
-	if ((!memcmp(data->client.app_name, "keymaste", strlen("keymaste")))
-		|| (!memcmp(data->client.app_name, "kmota", strlen("kmota")))) {
+	// TheCrazyLex@PA apply micro-optimization suggested by Mike Chan to replace strlen with sizeof
+	if ((!memcmp(data->client.app_name, "keymaste", (sizeof("keymaste")-1)))
+		|| (!memcmp(data->client.app_name, "kmota", sizeof("kmota")-1))) {
 		pr_debug("Do not unload keymaster or kmota app from tz\n");
 		goto unload_exit;
+	}
+
+	// TheCrazyLex@PA apply micro-optimization suggested by Mike Chan to replace strlen with sizeof
+	if ((!memcmp(data->client.app_name, "fpctzappfingerprint", (sizeof("fpctzappfingerprint")-1)))) {
+		pr_err("Before unload fpctzappfingerprint need to enable fpc clk\n");
+		if (fpc_clk_set(true) != 0) {
+			pr_err("Fail to enable fpc clk. Do not unload fpctzappfingerprint\n");
+			goto unload_exit;
+		}
+		// TheCrazyLex@PA enable the FPC IRQ when unloading fpctzappfingerprint, disable IRQ state in sync with display state afterwards - start
+		if (irq_active_toggle_safe_synced(true) != 0)
+			pr_warn("Failed to enable FPC IRQ, ignoring.\n");
+		// TheCrazyLex@PA enable the FPC IRQ when unloading fpctzappfingerprint, disable IRQ state in sync with display state afterwards - end
 	}
 
 	if (data->client.app_id > 0) {
@@ -1731,6 +1750,14 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		ret = qseecom_scm_call(SCM_SVC_TZSCHEDULER, 1, &req,
 				sizeof(struct qseecom_unload_app_ireq),
 				&resp, sizeof(resp));
+
+		// TheCrazyLex@PA enable the FPC IRQ when unloading fpctzappfingerprint, disable IRQ state in sync with display state afterwards - start
+		// TheCrazyLex@PA apply micro-optimization suggested by Mike Chan to replace strlen with sizeof
+		if ((!memcmp(data->client.app_name, "fpctzappfingerprint", (sizeof("fpctzappfingerprint")-1))))
+			if (irq_active_toggle_safe_synced(false) != 0)
+				pr_warn("Failed to disable FPC IRQ, ignoring.\n");
+		// TheCrazyLex@PA enable the FPC IRQ when unloading fpctzappfingerprint, disable IRQ state in sync with display state afterwards - end
+
 		if (ret) {
 			pr_err("scm_call to unload app (id = %d) failed\n",
 								req.app_id);
@@ -3090,8 +3117,6 @@ int qseecom_start_app(struct qseecom_handle **handle,
 		ret = __qseecom_load_fw(data, app_name);
 		if (ret < 0)
 			goto err;
-		data->client.app_id = ret;
-		strlcpy(data->client.app_name, app_name, MAX_APP_NAME_SIZE);
 	}
 	data->client.app_id = ret;
 	if (!found_app) {
@@ -3941,6 +3966,8 @@ static int qseecom_query_app_loaded(struct qseecom_dev_handle *data,
 		return ret;	/* scm call failed */
 	} else if (ret > 0) {
 		pr_debug("App id %d (%s) already exists\n", ret,
+			(char *)(req.app_name));
+		pr_err("App id %d (%s) already exists\n", ret,
 			(char *)(req.app_name));
 		spin_lock_irqsave(&qseecom.registered_app_list_lock, flags);
 		list_for_each_entry(entry,

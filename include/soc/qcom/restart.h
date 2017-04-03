@@ -20,5 +20,10 @@
 void msm_set_restart_mode(int mode);
 extern int pmic_reset_irq;
 
+/* FIH,Jimi,2015/08/29 add for pass ram info and rere{*/
+unsigned int restart_reason_rd(void);
+void restart_reason_wt(unsigned int rere);
+/* FIH,Jimi,2015/08/29 add for pass ram info and rere}*/
+
 #endif
 

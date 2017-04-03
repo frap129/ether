@@ -1,0 +1,49 @@
+
+qcom,nbq_scud_lg_2630mah {
+	/* #2230649_FIH_NBQ_2630mAh_averaged_MasterSlave_Dec28th2015*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2630>;
+	qcom,batt-id-kohm = <140>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "nbq_scud-lg_2630mah";
+	qcom,chg-rslow-comp-c1 = <1809191>;
+	qcom,chg-rslow-comp-c2 = <725061>;
+	qcom,chg-rs-to-rslow = <1024298>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0xBDA6>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.9";
+	qcom,fg-profile-data = [
+		 54 83 A9 65 
+		 6E 79 4D 6F 
+		 4B 83 B8 68 
+		 8A 71 4D 77 
+		 38 82 A5 93 
+		 32 B4 1B BA 
+		 7D 14 52 83 
+		 45 5C C2 78 
+		 20 6E 47 83 
+		 6F 71 AD 6C 
+		 EF 74 1A 82 
+		 92 9A B0 BD 
+		 BE CA 71 0C 
+		 A1 0A 8E 5B 
+		 14 70 B8 FE 
+		 8D 4C 25 3F 
+		 AF 49 00 00 
+		 9D 37 C2 41 
+		 E5 45 00 00 
+		 00 00 00 00 
+		 00 00 00 00 
+		 B4 70 2A 6B 
+		 44 70 C2 82 
+		 BA 74 24 61 
+		 EC 59 BC 7A 
+		 2F 6F 2A 52 
+		 43 79 75 CB 
+		 0C 28 61 0F 
+		 5F A0 71 0C 
+		 28 00 FF 36 
+		 F0 11 30 03 
+		 00 00 00 0C 
+	];
+};

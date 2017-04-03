@@ -1,0 +1,103 @@
+/* Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "nbq/msm8992-memmap_nbq_evt.dtsi"
+/include/ "nbq/msm8992_platform_nbq_evt.dtsi"
+/include/ "nbq/msm8992-memory-pstore.dtsi"
+/* Power */
+/include/ "nbq/PMIC-PMI8994_nbq_charger_fg.dtsi"
+
+/* Memory */
+
+/* Display / Touch Panel */
+
+/* Camera */
+
+/* Audio */
+/*/include/ "nbq/msm8992_sound_nbq_evt.dtsi"*/
+/ {
+   aliases {
+		i2c1 = &i2c_1;//weihung
+	};
+};
+
+&soc {
+	tlmm_pinmux: pinctrl@fd510000 {
+	//----------------------- weihung
+		pmx_i2c_10 {
+		       qcom,pins = <&gp 55>, <&gp 56>; /* SDA, SCL */
+		       qcom,num-grp-pins = <2>;
+		       qcom,pin-func = <4>;
+		       label = "pmx_i2c_10";
+
+		       i2c_10_active: i2c_10_active {
+		        drive-strength = <2>;
+		        bias-disable;
+		       };
+
+		       i2c_10_sleep: i2c_10_sleep {
+		        drive-strength = <2>;
+		        bias-disable;
+		       };
+		};
+    //----------------------- weihung
+    };
+
+	//----------------------- weihung
+    i2c_1: i2c@f9966000 {
+	    compatible = "qcom,i2c-msm-v2";
+	    #address-cells = <1>;
+	    #size-cells = <0>;
+	    reg-names = "qup_phys_addr";
+	    reg = <0xf9966000 0x1000>;
+	    interrupt-names = "qup_irq";
+	    interrupts = <0 104 0>;
+	    qcom,clk-freq-out = <400000>;
+	    qcom,clk-freq-in  = <19200000>;
+	    clock-names = "iface_clk", "core_clk";
+	    clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+		         <&clock_gcc clk_gcc_blsp2_qup4_i2c_apps_clk>;
+
+	    pinctrl-names = "i2c_active", "i2c_sleep";
+	    pinctrl-0 = <&i2c_10_active>;
+	    pinctrl-1 = <&i2c_10_sleep>;
+	    qcom,noise-rjct-scl = <0>;
+	    qcom,noise-rjct-sda = <0>;
+	    dmas = <&dma_blsp2 18 64 0x20000020 0x20>,
+		       <&dma_blsp2 19 32 0x20000020 0x20>;
+	    dma-names = "tx", "rx";
+	    qcom,master-id = <84>;
+    };
+    //----------------------- weihung
+};
+
+
+/* Peripherals */
+/include/ "nbq/msm8992_reset_key_nbq_evt.dtsi"
+/* Wireless */
+
+/* Sensor */
+
+/* LEDS */
+/include/ "nbq/nbq-wled.dtsi"
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+/include/ "nbq/nbq_LP5523.dtsi"
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
+/* USB */
+
+&spi_0 {
+    status = "disabled";
+};
+
+/* Vibrator */
+/include/ "nbq/nbq-haptics.dtsi"

@@ -1,0 +1,5 @@
+config HD3SS3220_SUPPORT
+
+	tristate "hd3ss3220 support"
+	depends on I2C
+	default n

@@ -920,7 +920,7 @@ EXPORT_SYMBOL(mdss_bus_bandwidth_ctrl);
 void mdss_mdp_clk_ctrl(int enable)
 {
 	struct mdss_data_type *mdata = mdss_mdp_get_mdata();
-	static int mdp_clk_cnt;
+	static int mdp_clk_cnt = 0;
 	int changed = 0;
 
 	mutex_lock(&mdp_clk_lock);
@@ -3447,7 +3447,8 @@ static int mdss_mdp_cx_ctrl(struct mdss_data_type *mdata, int enable)
 	if (enable) {
 		rc = regulator_set_voltage(
 				mdata->vdd_cx,
-				RPM_REGULATOR_CORNER_SVS_SOC,
+				//RPM_REGULATOR_CORNER_SVS_SOC,
+				RPM_REGULATOR_CORNER_SUPER_TURBO, //JY modified to monitor NBQM-548 20151222
 				RPM_REGULATOR_CORNER_SUPER_TURBO);
 		if (rc < 0)
 			goto vreg_set_voltage_fail;

@@ -193,7 +193,7 @@ config SND_DEBUG_VERBOSE
 	depends on SND_DEBUG
 	help
 	  Say Y here to enable extra-verbose debugging messages.
-	  
+
 	  Let me repeat: it enables EXTRA-VERBOSE DEBUGGING messages.
 	  So, say Y only if you are ready to be annoyed.
 
@@ -217,4 +217,9 @@ config SND_DMA_SGBUF
 	def_bool y
 	depends on X86
 
+#weihung [NBQM-61]porting aduio function
+config FIH_NBQ_JACK
+	bool "enabled nbq JACK"
+	help
+	  Say Y here to enabled nbq JACK.
 source "sound/core/seq/Kconfig"

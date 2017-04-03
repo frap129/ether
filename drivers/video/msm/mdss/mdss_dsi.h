@@ -124,6 +124,13 @@ enum dsi_pm_type {
 	DSI_MAX_PM
 };
 
+enum {
+	CABC_OFF,
+	CABC_UI,
+	CABC_STILL,
+	CABC_MOVING,
+};
+
 #define CTRL_STATE_UNKNOWN		0x00
 #define CTRL_STATE_PANEL_INIT		BIT(0)
 #define CTRL_STATE_MDP_ACTIVE		BIT(1)
@@ -348,6 +355,7 @@ struct mdss_dsi_ctrl_pdata {
 	int disp_te_gpio;
 	int rst_gpio;
 	int disp_en_gpio;
+	int disp_ldo_gpio;  /*[NBQ-16] EricHsieh,Implement the OTM1926C CTC 5.2" panel */
 	int bklt_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
@@ -387,6 +395,20 @@ struct mdss_dsi_ctrl_pdata {
 	u32 *status_value;
 	u32 status_error_count;
 	u32 max_status_error_count;
+
+	// KuroCHChung CABC Impletation {
+	struct dsi_panel_cmds cabc_off_cmds;
+	struct dsi_panel_cmds cabc_ui_cmds;
+	struct dsi_panel_cmds cabc_still_cmds;
+	struct dsi_panel_cmds cabc_moving_cmds;
+
+	struct dsi_panel_cmds ce_on_cmds;
+	struct dsi_panel_cmds ce_off_cmds;
+	// } KuroCHChung CABC Impletation
+
+	struct dsi_panel_cmds low_power_fps_cmds;
+	struct dsi_panel_cmds mid_power_fps_cmds;
+	struct dsi_panel_cmds default_power_fps_cmds;
 
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
@@ -431,6 +453,8 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_util_intf *mdss_util;
 
 	bool dfps_status;	/* dynamic refresh status */
+
+	struct timespec wait_until_ts;
 };
 
 struct dsi_status_data {
@@ -518,6 +542,14 @@ int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
 
 int mdss_dsi_register_recovery_handler(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct mdss_intf_recovery *recovery);
+
+int mdss_dsi_panel_update_fps(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+			      int new_fps);
+
+int mdss_dsi_panel_cabc_ctrl(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
+							int cabc_status);
+
+int mdss_dsi_panel_ce_onoff(struct mdss_dsi_ctrl_pdata *ctrl_pdata, unsigned long enable);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {

@@ -80,6 +80,10 @@ static LIST_HEAD(gpio_chips);
 static DEFINE_IDR(dirent_idr);
 #endif
 
+/*FIHTDC Add GPIO control function  */
+static int gpio_n_min = 0;
+static int gpio_n_max = 0;
+
 /*
  * Internal gpiod_* API using descriptors instead of the integer namespace.
  * Most of this should eventually go public.
@@ -109,6 +113,68 @@ static inline void desc_set_label(struct gpio_desc *d, const char *label)
 	d->label = label;
 #endif
 }
+/*FIHTDC Add GPIO control function*/
+/* Implement to Control gpio High/Low */
+static ssize_t control_store(struct class *class,
+				struct class_attribute *attr,
+				const char *buf, size_t len)
+{
+	char command[128], type[10] = {0};	/* type = gpio */
+	char pin[10]={0};	/* pin = 1~89 */
+	char power[10] = {0};
+	int i = 0, type_len = 0, pin_len = 0, gpio_pin = 0;
+
+	memset(command, 0, sizeof(command));
+	sprintf(command, "%s", buf);
+	command[len-1] = '\0';
+
+	printk("%s\n", command);
+
+	for (i = 0 ; i < len ; i++) {
+		if (command[i] == '-')
+			type_len = i;
+		if (command[i] == ' ')
+			pin_len = i;
+	}
+
+	if ((pin_len < type_len)||(type_len == 0)||(pin_len == 0))
+		goto err;
+
+	strncpy(type, command, type_len);
+	strncpy(pin, command + type_len + 1, pin_len - type_len);
+	strncpy(power, command + pin_len + 1, len - pin_len);
+	gpio_pin = simple_strtol (pin, NULL, 10);
+
+	pr_info("[%s] type = %s, gpio_pin = %d, power = %s\n", __func__, type, gpio_pin, power);
+
+	/* Check pin type to change pin define */
+	if (!strncmp(type, "gpio", 4)) {
+		gpio_pin = gpio_pin + gpio_n_min;
+	}
+	else
+		goto err;
+
+	/* Check pin define */
+	pr_info("%s: gpio_n_min is %d, gpio_n_max is %d\n", __func__, gpio_n_min, gpio_n_max);
+	if ((gpio_pin < gpio_n_min)||(gpio_pin > gpio_n_max))
+	{
+        pr_err("%s: GPIO number %d is out of range\n", __func__, gpio_pin);
+		goto err;
+	}
+	/* Control gpio */
+	if (!strncmp(power, "high", 4))
+		gpio_direction_output(gpio_pin, 1);
+	else if (!strncmp(power, "low", 3))
+		gpio_direction_output(gpio_pin, 0);
+	else
+		goto err;
+
+	pr_info("[%s] set %s-%d as %s\n", __func__, type, gpio_pin, power);
+
+err:
+	return len;
+}
+/*FIHTDC Add GPIO control function  */
 
 /*
  * Return the GPIO number of the passed descriptor relative to its chip
@@ -724,6 +790,8 @@ done:
 static struct class_attribute gpio_class_attrs[] = {
 	__ATTR(export, 0200, NULL, export_store),
 	__ATTR(unexport, 0200, NULL, unexport_store),
+/*FIHTDC Add GPIO control function  */
+	__ATTR(control, 0666, NULL, control_store),	
 	__ATTR_NULL,
 };
 
@@ -1260,7 +1328,13 @@ int gpiochip_add(struct gpio_chip *chip)
 	pr_debug("gpiochip_add: registered GPIOs %d to %d on device: %s\n",
 		chip->base, chip->base + chip->ngpio - 1,
 		chip->label ? : "generic");
-
+	
+/*FIHTDC Add GPIO control function  */
+	if (!strncmp(chip->label, "msm_tlmm_gpio", 13)) {
+		gpio_n_min = chip->base;
+		gpio_n_max = chip->base + chip->ngpio - 1;
+	}
+/*FIHTDC Add GPIO control function  */
 	return 0;
 
 unlock:

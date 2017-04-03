@@ -29,7 +29,20 @@
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
 
+/*FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {*/
+extern ssize_t panel_print_status2(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
+/*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
+
 #define XO_CLK_RATE	19200000
+
+static struct mdss_dsi_ctrl_pdata *gpdata  = NULL;
+static struct class *lcd_class;
+int CABC_enable = 0;
+int CE_enable = 0;
+EXPORT_SYMBOL(CABC_enable);
+EXPORT_SYMBOL(CE_enable);
+static unsigned long current_cabc = 2;
+static unsigned long current_ce = 0;
 
 static struct dsi_drv_cm_data shared_ctrl_data;
 
@@ -205,6 +218,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	struct mdss_panel_info *pinfo = NULL; //JYLee added to cover bad IC power timing 20160418
 	int i = 0;
 
 	if (pdata == NULL) {
@@ -214,6 +228,7 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+	pinfo = &(ctrl_pdata->panel_data.panel_info); //JYLee added to cover bad IC power timing 20160418
 
 	for (i = 0; i < DSI_MAX_PM; i++) {
 		/*
@@ -231,6 +246,16 @@ static int mdss_dsi_panel_power_on(struct mdss_panel_data *pdata)
 			goto error;
 		}
 	}
+//JYLee added to cover bad IC power timing 20160416 {
+	if (!pinfo->cont_splash_enabled) {
+		for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
+			gpio_set_value((ctrl_pdata->rst_gpio),
+				pdata->panel_info.rst_seq[i]);
+			if (pdata->panel_info.rst_seq[++i])
+				usleep(pinfo->rst_seq[i] * 1000);
+		}
+	}
+//JYLee added to cover bad IC power timing 20160416 }
 	if (ctrl_pdata->panel_bias_vreg) {
 		pr_debug("%s: Enable panel bias vreg. ndx = %d\n",
 		       __func__, ctrl_pdata->ndx);
@@ -692,7 +717,18 @@ static int mdss_dsi_update_panel_config(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 
 	return ret;
 }
+//JYLee added to force lp11 before reset to match spec 20160409 {
+void mdss_dsi_force_lp11(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
+{
+	u32 tmp;
 
+	tmp = MIPI_INP((ctrl_pdata->ctrl_base) + 0xac);
+	tmp &= ~(1<<28);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0xac, tmp);
+	wmb();
+	pr_err("Force lp11\n");
+}
+//JYLee added to force lp11 before reset to match spec 20160409 }
 int mdss_dsi_on(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -878,6 +914,7 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 	if (!(ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT)) {
 		if (!pdata->panel_info.dynamic_switch_pending) {
 			ret = ctrl_pdata->on(pdata);
+			current_cabc = 2;
 			if (ret) {
 				pr_err("%s: unable to initialize the panel\n",
 							__func__);
@@ -893,6 +930,10 @@ static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 		if (mdss_dsi_is_te_based_esd(ctrl_pdata))
 			enable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
+
+// FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade {
+	panel_print_status2(ctrl_pdata);
+//} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade
 
 error:
 	mdss_dsi_clk_ctrl(ctrl_pdata, DSI_ALL_CLKS, 0);
@@ -1002,6 +1043,26 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	mdss_dsi_sw_reset(ctrl_pdata, true);
 	pr_debug("%s-:End\n", __func__);
 	return ret;
+}
+
+static void __mdss_dsi_update_panel_clk(struct mdss_panel_data *pdata,
+					int new_fps)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+
+	if (pdata == NULL) {
+		pr_err("%s Invalid pdata\n", __func__);
+		return;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				  panel_data);
+	if (ctrl_pdata == NULL) {
+		pr_err("%s Invalid ctrl_pdata\n", __func__);
+		return;
+	}
+
+	mdss_dsi_panel_update_fps(ctrl_pdata, new_fps);
 }
 
 static void __mdss_dsi_update_video_mode_total(struct mdss_panel_data *pdata,
@@ -1258,34 +1319,49 @@ static int mdss_dsi_dfps_config(struct mdss_panel_data *pdata, int new_fps)
 	if (sctrl_pdata)
 		sctrl_pdata->dfps_status = true;
 
-	if (new_fps !=
-		ctrl_pdata->panel_data.panel_info.mipi.frame_rate) {
-		if (pdata->panel_info.dfps_update
-			== DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP ||
-			pdata->panel_info.dfps_update
-			== DFPS_IMMEDIATE_PORCH_UPDATE_MODE_VFP) {
-
-			__mdss_dsi_update_video_mode_total(pdata, new_fps);
-			if (sctrl_pdata) {
-				pr_debug("%s Updating slave ctrl DFPS\n",
-						__func__);
-				__mdss_dsi_update_video_mode_total(
-						&sctrl_pdata->panel_data,
-						new_fps);
-			}
-
-		} else {
-			rc = __mdss_dsi_dfps_update_clks(pdata, new_fps);
-			if (!rc && sctrl_pdata) {
-				pr_debug("%s Updating slave ctrl DFPS\n",
-						__func__);
-				rc = __mdss_dsi_dfps_update_clks(
-						&sctrl_pdata->panel_data,
-						new_fps);
+	switch (pinfo->type) {
+	case MIPI_CMD_PANEL: {
+		if (new_fps !=
+		    ctrl_pdata->panel_data.panel_info.mipi.refresh_rate) {
+			if (pdata->panel_info.dfps_update ==
+			    DFPS_IMMEDIATE_LCM_CLK_UPDATE_MODE) {
+				__mdss_dsi_update_panel_clk(pdata, new_fps);
 			}
 		}
-	} else {
-		pr_debug("%s: Panel is already at this FPS\n", __func__);
+		break;
+	}
+	case MIPI_VIDEO_PANEL: {
+		if (new_fps !=
+		    ctrl_pdata->panel_data.panel_info.mipi.frame_rate) {
+			if ((pdata->panel_info.dfps_update ==
+			     DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP) ||
+			    (pdata->panel_info.dfps_update ==
+			     DFPS_IMMEDIATE_PORCH_UPDATE_MODE_VFP)) {
+				__mdss_dsi_update_video_mode_total(pdata,
+								   new_fps);
+				if (sctrl_pdata) {
+					pr_debug("%s Updating sctrl DFPS\n",
+							__func__);
+					__mdss_dsi_update_video_mode_total(
+						&sctrl_pdata->panel_data,
+						new_fps);
+				}
+			} else {
+				rc = __mdss_dsi_dfps_update_clks(pdata,
+								 new_fps);
+				if (!rc && sctrl_pdata) {
+					pr_debug("%s Updating sctrl DFPS\n",
+							__func__);
+					rc = __mdss_dsi_dfps_update_clks(
+						&sctrl_pdata->panel_data,
+						new_fps);
+				}
+			}
+		}
+		break;
+	}
+	default:
+		break;
 	}
 
 	return rc;
@@ -1683,6 +1759,120 @@ end:
 	return dsi_pan_node;
 }
 
+int fih_get_cabc (void)
+{
+	return current_cabc;
+}
+EXPORT_SYMBOL(fih_get_cabc);
+
+int fih_set_cabc(int cabc)
+{
+	int res = 0;
+
+	if (cabc == current_cabc)
+		return res;
+
+	// Try to update Current CABC Value
+	res = mdss_dsi_panel_cabc_ctrl(gpdata, cabc);
+	if (res < 0)
+	{
+		pr_err("%s: cabc set failed!\n", __func__);
+		goto fail;
+	}
+
+	current_cabc = cabc;
+
+fail:
+	return res;
+}
+EXPORT_SYMBOL(fih_set_cabc);
+
+int fih_get_ce (void)
+{
+	return current_ce;
+}
+EXPORT_SYMBOL(fih_get_ce);
+
+int fih_set_ce (int ce)
+{
+	int res;
+
+	res = mdss_dsi_panel_ce_onoff(gpdata, ce);
+	if (res < 0)
+	{
+		pr_err("%s: ce set failed!\n", __func__);
+		goto fail;
+	}
+
+	current_ce = ce;
+
+fail:
+	return res;
+}
+EXPORT_SYMBOL(fih_set_ce);
+
+static ssize_t ce_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	 return sprintf(buf, "%lu\n", current_ce);
+}
+
+static ssize_t ce_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int rc = -ENXIO;
+	rc = kstrtoul(buf, 0, &current_ce);
+	if (rc)
+	{
+		return rc;
+	}
+
+	if (current_ce)
+	{
+		mdss_dsi_panel_ce_onoff(gpdata, 1);
+	}
+	else
+	{
+		mdss_dsi_panel_ce_onoff(gpdata, 0);
+	}
+
+	return count;
+}
+
+static ssize_t cabc_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	 return sprintf(buf, "%lu\n", current_cabc);
+}
+
+static ssize_t cabc_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int rc = -ENXIO;
+
+	rc = kstrtoul(buf, 0, &current_cabc);
+	if (rc)
+	{
+		return rc;
+	}
+
+	mdss_dsi_panel_cabc_ctrl(gpdata, current_cabc);
+
+	return count;
+}
+
+static struct device_attribute lcd_device_attributes_ce[] = {
+	__ATTR(color_mode, 0664, ce_show, ce_store),
+	__ATTR_NULL,
+};
+
+static struct device_attribute lcd_device_attributes_cabc[] = {
+	__ATTR(cabc_setting, 0664, cabc_show, cabc_store),
+	__ATTR_NULL,
+};
+
+static struct device_attribute lcd_device_attributes_ce_cabc[] = {
+	__ATTR(color_mode, 0664, ce_show, ce_store),
+	__ATTR(cabc_setting, 0664, cabc_show, cabc_store),
+	__ATTR_NULL,
+};
+
 static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0, i = 0;
@@ -1833,6 +2023,49 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		disable_irq(gpio_to_irq(ctrl_pdata->disp_te_gpio));
 	}
 	pr_debug("%s: Dsi Ctrl->%d initialized\n", __func__, index);
+
+	// KuroCHChung@fih-foxconn.com for CABC Porting 20151029 {
+	if((ctrl_pdata->cabc_off_cmds.cmd_cnt) &&
+		(ctrl_pdata->cabc_ui_cmds.cmd_cnt) &&
+		(ctrl_pdata->cabc_still_cmds.cmd_cnt) &&
+		(ctrl_pdata->cabc_moving_cmds.cmd_cnt))
+	{
+		CABC_enable = 1;
+	}
+
+	if((ctrl_pdata->ce_off_cmds.cmd_cnt) &&
+		(ctrl_pdata->ce_on_cmds.cmd_cnt))
+	{
+		CE_enable = 1;
+	}
+
+	if(CABC_enable || CE_enable)
+	{
+
+		gpdata = ctrl_pdata;
+
+		lcd_class = class_create(THIS_MODULE, "lcm");
+
+		if (IS_ERR(lcd_class))
+		{
+			pr_err("Unable to create lcm class; errno = %ld\n",
+					PTR_ERR(lcd_class));
+			return PTR_ERR(lcd_class);
+		}
+
+		if(CABC_enable && !CE_enable) {
+			lcd_class->dev_attrs = lcd_device_attributes_cabc;
+		} else if(!CABC_enable && CE_enable) {
+			lcd_class->dev_attrs = lcd_device_attributes_ce;
+		} else if(CABC_enable && CE_enable) {
+			lcd_class->dev_attrs = lcd_device_attributes_ce_cabc;
+		}
+
+		device_create(lcd_class, NULL, 0, NULL, "lcd");
+	}
+
+	//} KuroCHChung@fih-foxconn.com for CABC Porting 20151029
+
 	return 0;
 
 error_pan_node:
@@ -2106,6 +2339,18 @@ int dsi_panel_device_register(struct device_node *pan_node,
 			pr_err("%s:%d, Disp_en gpio not specified\n",
 					__func__, __LINE__);
 	}
+
+//<<[NBQ-16] EricHsieh, Implement the OTM1926C CTC 5.2" panel 	
+	if (ctrl_pdata->disp_ldo_gpio <= 0) {
+		ctrl_pdata->disp_ldo_gpio = of_get_named_gpio(
+			ctrl_pdev->dev.of_node,
+			"qcom,platform-ldo-gpio", 0);
+
+		if (!gpio_is_valid(ctrl_pdata->disp_en_gpio))
+			pr_err("%s:%d, Disp_en gpio not specified\n",
+					__func__, __LINE__);
+	}
+//>>[NBQ-16] EricHsieh,END
 
 	ctrl_pdata->disp_te_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
 		"qcom,platform-te-gpio", 0);

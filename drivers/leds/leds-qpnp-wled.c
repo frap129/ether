@@ -1279,6 +1279,14 @@ static int qpnp_wled_parse_dt(struct qpnp_wled *wled)
 	wled->en_cabc = of_property_read_bool(spmi->dev.of_node,
 			"qcom,en-cabc");
 
+	// JYLee added to disable CABC for recovery mode 20160328 {
+	if((strstr(saved_command_line, "androidboot.mode=1") != NULL) || (strstr(saved_command_line, "cabc") == NULL))
+	{
+		wled->en_cabc = false;
+		pr_err("%s: Disable WLED CABC \n", __func__);
+	}
+	// JYLee added to disable CABC for recovery mode 20160328 }
+
 	prop = of_find_property(spmi->dev.of_node,
 			"qcom,led-strings-list", &temp_val);
 	if (!prop || !temp_val || temp_val > QPNP_WLED_MAX_STRINGS) {

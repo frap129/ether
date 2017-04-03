@@ -92,7 +92,9 @@ endif
 source "drivers/usb/dwc3/Kconfig"
 
 source "drivers/usb/chipidea/Kconfig"
-
+#/* NBQ - AlbertWu - [NBQM-623] - [USB] Add HD3SS3220 USB type C driver in Android M OS. */
+source "drivers/usb/hd3ss3220/kconfig"
+#/* end  NBQ - AlbertWu - [NBQM-623] */
 comment "USB port drivers"
 
 if USB

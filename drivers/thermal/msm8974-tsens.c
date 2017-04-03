@@ -588,6 +588,11 @@ struct tsens_tm_device {
 
 struct tsens_tm_device *tmdev;
 
+/* Black Box */
+#define BBOX_TSEN_GET_FAIL do {printk("BBox;%s: Get temp fail\n", __func__); printk("BBox::UEC;22::0\n");} while (0);
+#define BBOX_TSEN_REGISTER_FAIL do {printk("BBox;%s: register thermal fail\n", __func__); printk("BBox::UEC;22::4\n");} while (0);
+#define BBOX_TSEN_IRQ_FAIL do {printk("BBox;%s: request irq fail\n", __func__); printk("BBox::UEC;22::6\n");} while (0);
+
 
 int tsens_is_ready()
 {
@@ -749,6 +754,7 @@ static void msm_tsens_get_temp(int sensor_hw_num, unsigned long *temp)
 	rc = tsens_get_sw_id_mapping(sensor_hw_num, &sensor_sw_id);
 	if (rc < 0) {
 		pr_err("tsens mapping index not found\n");
+		BBOX_TSEN_GET_FAIL;
 		return;
 	}
 
@@ -917,6 +923,7 @@ static int tsens_tz_get_trip_temp(struct thermal_zone_device *thermal,
 	rc = tsens_get_sw_id_mapping(tm_sensor->sensor_hw_num, &sensor_sw_id);
 	if (rc < 0) {
 		pr_err("tsens mapping index not found\n");
+		BBOX_TSEN_GET_FAIL;
 		return rc;
 	}
 	*temp = tsens_tz_code_to_degc(reg, sensor_sw_id);
@@ -3357,6 +3364,7 @@ static int _tsens_register_thermal(void)
 						     &tsens_thermal_zone_ops,
 						     NULL, 0, 0);
 		if (IS_ERR(tmdev->sensor[i].tz_dev)) {
+			BBOX_TSEN_REGISTER_FAIL;
 			pr_err("%s: thermal_zone_device_register() failed.\n",
 			__func__);
 			rc = -ENODEV;
@@ -3367,6 +3375,7 @@ static int _tsens_register_thermal(void)
 	rc = request_threaded_irq(tmdev->tsens_irq, NULL, tsens_irq_thread,
 		IRQF_TRIGGER_HIGH | IRQF_ONESHOT, "tsens_interrupt", tmdev);
 	if (rc < 0) {
+		BBOX_TSEN_IRQ_FAIL;
 		pr_err("%s: request_irq FAIL: %d\n", __func__, rc);
 		for (i = 0; i < tmdev->tsens_num_sensor; i++)
 			thermal_zone_device_unregister(tmdev->sensor[i].tz_dev);

@@ -1,0 +1,49 @@
+
+qcom,nbq_mcnair_2500mah {
+	/* #2122436_FIH_NBQ_2500mAh_averaged_MasterSlave_Aug28th2015*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2500>;
+	qcom,batt-id-kohm = <100>;
+	qcom,battery-beta = <3435>;
+	qcom,battery-type = "nbq_mcnair_2500mah";
+	qcom,chg-rslow-comp-c1 = <2929147>;
+	qcom,chg-rslow-comp-c2 = <3571221>;
+	qcom,chg-rs-to-rslow = <906777>;
+	qcom,chg-rslow-comp-thr = <0x99>;
+	qcom,checksum = <0x4159>;
+	qcom,gui-version = "PMI8994GUI - 2.1.6.8";
+	qcom,fg-profile-data = [
+		 C3 83 0D 77 
+		 DB 7B 9A 74 
+		 59 83 55 67 
+		 50 88 00 94 
+		 38 82 1D 9A 
+		 91 BD E4 CA 
+		 52 0E 05 88 
+		 B5 7D 7C 81 
+		 73 77 4E 83 
+		 DA 70 0B 68 
+		 9F 7F 58 82 
+		 70 99 B6 BC 
+		 80 C9 5A 0D 
+		 85 0A 21 60 
+		 14 70 D9 FF 
+		 BE 37 D6 45 
+		 E6 41 00 00 
+		 FE 4F 4F 44 
+		 D1 51 00 00 
+		 00 00 00 00 
+		 00 00 00 00 
+		 01 70 0B 6A 
+		 CD 54 7D 89 
+		 A8 7C E5 70 
+		 98 5E 21 83 
+		 32 77 3B 6A 
+		 53 7C 20 B0 
+		 1D 04 61 90 
+		 5E A0 71 0C 
+		 28 00 FF 36 
+		 F0 11 30 03 
+		 00 00 00 0C 
+	];
+};

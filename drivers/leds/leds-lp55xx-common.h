@@ -20,7 +20,64 @@ enum lp55xx_engine_index {
 	LP55XX_ENGINE_1,
 	LP55XX_ENGINE_2,
 	LP55XX_ENGINE_3,
+	LP55XX_ENGINE_MAX = LP55XX_ENGINE_3, //NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver.
 };
+
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+enum lp55xx_engine_mode {
+	LP55XX_ENGINE_DISABLED,
+	LP55XX_ENGINE_LOAD,
+	LP55XX_ENGINE_RUN,
+};
+/*<<EricHsieh,[NBQ-150],change the TI LP5xx sysfs read/write permission*/
+#define LP55XX_DEV_ATTR_RW(name, show, store)	\
+	DEVICE_ATTR(name, S_IRUGO | S_IWUGO, show, store)
+#define LP55XX_DEV_ATTR_RO(name, show)		\
+	DEVICE_ATTR(name, S_IRUGO, show, NULL)
+#define LP55XX_DEV_ATTR_WO(name, store)		\
+	DEVICE_ATTR(name, S_IWUSR | S_IWGRP, NULL, store)
+/*>>EricHsieh,[NBQ-150],END*/
+
+#define show_mode(nr)							\
+static ssize_t show_engine##nr##_mode(struct device *dev,		\
+				    struct device_attribute *attr,	\
+				    char *buf)				\
+{									\
+	return show_engine_mode(dev, attr, buf, nr);			\
+}
+
+#define store_mode(nr)							\
+static ssize_t store_engine##nr##_mode(struct device *dev,		\
+				     struct device_attribute *attr,	\
+				     const char *buf, size_t len)	\
+{									\
+	return store_engine_mode(dev, attr, buf, len, nr);		\
+}
+
+#define show_leds(nr)							\
+static ssize_t show_engine##nr##_leds(struct device *dev,		\
+			    struct device_attribute *attr,		\
+			    char *buf)					\
+{									\
+	return show_engine_leds(dev, attr, buf, nr);			\
+}
+
+#define store_leds(nr)						\
+static ssize_t store_engine##nr##_leds(struct device *dev,	\
+			     struct device_attribute *attr,	\
+			     const char *buf, size_t len)	\
+{								\
+	return store_engine_leds(dev, attr, buf, len, nr);	\
+}
+
+#define store_load(nr)							\
+static ssize_t store_engine##nr##_load(struct device *dev,		\
+				     struct device_attribute *attr,	\
+				     const char *buf, size_t len)	\
+{									\
+	return store_engine_load(dev, attr, buf, len, nr);		\
+}
+/* end  NBQ - MaoyiChou - [NBQ-775] */
 
 struct lp55xx_led;
 struct lp55xx_chip;
@@ -71,6 +128,18 @@ struct lp55xx_device_config {
 	const struct attribute_group *dev_attr_group;
 };
 
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+/*
+ * struct lp55xx_engine
+ * @mode       : Engine mode
+ * @led_mux    : Mux bits for LED selection. Only used in LP5523
+ */
+struct lp55xx_engine {
+	enum lp55xx_engine_mode mode;
+	u16 led_mux;
+};
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
 /*
  * struct lp55xx_chip
  * @cl         : I2C communication for access registers
@@ -79,6 +148,7 @@ struct lp55xx_device_config {
  * @num_leds   : Number of registered LEDs
  * @cfg        : Device specific configuration data
  * @engine_idx : Selected engine number
+ * @engines    : Engine structure for the device attribute R/W interface
  * @fw         : Firmware data for running a LED pattern
  */
 struct lp55xx_chip {
@@ -90,6 +160,13 @@ struct lp55xx_chip {
 	struct lp55xx_device_config *cfg;
 	enum lp55xx_engine_index engine_idx;
 	const struct firmware *fw;
+	/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+	struct lp55xx_engine engines[LP55XX_ENGINE_MAX];
+	struct regulator *regulator_lp55xxvdd;
+	struct regulator *regulator_i2cvddp6;
+	struct device dev;
+	/* end  NBQ - MaoyiChou - [NBQ-775] */
+	u8 led_patterns; //  NBQ - MaoyiChou - [NBQ-921] - [Cloud LED] Add the LP5523 virtual file for FQC and customer pattern.
 };
 
 /*
@@ -118,6 +195,11 @@ extern int lp55xx_read(struct lp55xx_chip *chip, u8 reg, u8 *val);
 extern int lp55xx_update_bits(struct lp55xx_chip *chip, u8 reg,
 			u8 mask, u8 val);
 
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+/*gpio access*/
+int lp55xx_set_trigger(struct lp55xx_chip *chip, u8 gpio, u8 val);
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
 /* external clock detection */
 extern bool lp55xx_is_extclk_used(struct lp55xx_chip *chip);
 
@@ -134,5 +216,16 @@ extern void lp55xx_unregister_leds(struct lp55xx_led *led,
 /* common device attributes functions */
 extern int lp55xx_register_sysfs(struct lp55xx_chip *chip);
 extern void lp55xx_unregister_sysfs(struct lp55xx_chip *chip);
+
+/*  NBQ - MaoyiChou - [NBQ-775] - [Cloud LED] Implement LP5523 driver. */
+/* common device tree population function */
+extern int lp55xx_of_populate_pdata(struct device *dev,
+				    struct device_node *np);
+/* end  NBQ - MaoyiChou - [NBQ-775] */
+
+/*  NBQ - MaoyiChou - [NBQ-1102] - [Cloud LED] Add the LP5523 power manager. */
+extern int lp55xx_pwr_init(struct lp55xx_chip *chip, bool on);
+extern int lp55xx_pwr_on(struct lp55xx_chip *chip, bool on);
+/* end  NBQ - MaoyiChou - [NBQ-1102] */
 
 #endif /* _LEDS_LP55XX_COMMON_H */

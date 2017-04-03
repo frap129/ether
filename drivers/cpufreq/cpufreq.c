@@ -233,6 +233,16 @@ void cpufreq_cpu_put(struct cpufreq_policy *policy)
 }
 EXPORT_SYMBOL_GPL(cpufreq_cpu_put);
 
+//20150330 FAO-537 IsonYHHung start
+struct _cpufreq_subsys_opt *cpufreq_subsys_opt = NULL;
+
+void register_cpufreq_subsys_opt(struct _cpufreq_subsys_opt *opt)
+{
+	cpufreq_subsys_opt = opt;
+}
+EXPORT_SYMBOL_GPL(register_cpufreq_subsys_opt);
+//20150330 FAO-537 IsonYHHung end
+
 /*********************************************************************
  *            EXTERNALLY AFFECTING FREQUENCY CHANGES                 *
  *********************************************************************/
@@ -1742,7 +1752,15 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 		target_freq = policy->max;
 	if (target_freq < policy->min)
 		target_freq = policy->min;
-
+	//20150330 FAO-537 IsonYHHung start
+	if(cpufreq_subsys_opt) {
+		target_freq = cpufreq_subsys_opt->freq_tuning(policy, target_freq);
+		/*
+		printk("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
+			policy->cpu, target_freq, relation, old_target_freq);
+		*/
+	}
+	//20150330 FAO-537 IsonYHHung end
 	pr_debug("target for CPU %u: %u kHz, relation %u, requested %u kHz\n",
 			policy->cpu, target_freq, relation, old_target_freq);
 

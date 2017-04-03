@@ -1,0 +1,253 @@
+/ {
+   aliases {
+		spi12 = &spi_12;
+	};
+};
+
+&soc {
+	/* SPI : BLSP12 */
+	spi_12: spi@f9968000 {
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical";
+		reg = <0xf9968000 0x500>;
+		interrupt-names = "spi_irq";
+		interrupts = <0 106 0>;
+		spi-max-frequency = <4800000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+		/delete-property/ qcom,use-pinctrl;
+		pinctrl-0 = <>;
+		pinctrl-1 = <>;
+		qcom,shared;
+		status = "ok";
+
+		fpc1020@1 {
+			status = "ok";
+			reg = <1>;
+			compatible = "fpc,fpc1020";
+			input-device-name = "fpc1020";
+			interrupt-parent = <&msm_gpio>;
+			interrupts = <90 0x0>;
+			fpc,gpio_cs0    = <&msm_gpio 87 0>;
+			fpc,gpio_rst    = <&msm_gpio 89 0>;
+			fpc,gpio_irq    = <&msm_gpio 90 0>;
+			vcc_spi-supply  = <&pm8994_l22>;
+			vdd_ana-supply  = <&pm8994_l22>;
+			vdd_io-supply   = <&pm8994_l22>;
+			fpc,use_fpc2050 = <1>;
+			fpc,enable-on-boot;
+			/* EV_MSC, MSC_SCAN */
+			fpc,event-type = <4>;
+			fpc,event-code = <4>;
+
+			spi-max-frequency = <4800000>;
+			spi-qup-id = <12>;
+			clock-names = "iface_clk", "core_clk";
+			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+				<&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
+
+			pinctrl-names = "fpc1020_spi_active",
+					"fpc1020_reset_reset",
+					"fpc1020_reset_active",
+					"fpc1020_cs_low",
+					"fpc1020_cs_high",
+					"fpc1020_cs_active",
+					"fpc1020_irq_active";
+
+			pinctrl-0 = <&fpc_spi_active>;
+			pinctrl-1 = <&fpc_reset_reset>;
+			pinctrl-2 = <&fpc_reset_active>;
+			pinctrl-3 = <&fpc_cs_low>;
+			pinctrl-4 = <&fpc_cs_high>;
+			pinctrl-5 = <&fpc_cs_active>;
+			pinctrl-6 = <&fpc_irq_active>;
+		};
+	};
+};
+
+&pm8994_l22 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-enable = <0>;
+	qcom,init-voltage = <1800000>;
+	qcom,init-ldo-mode = <1>;
+	qcom,init-pin-ctrl-enable = <0>;
+	qcom,init-pin-ctrl-mode = <0>;
+	status = "ok";
+};
+
+&pm8994_s4 {
+	status = "ok";
+};
+
+&tlmm_pinmux {
+	/* GPIO_85: MHL_SPI_MOSI */
+	msm_gpio_85 {
+		qcom,pins = <&gp 85>;
+		qcom,num-grp-pins = <1>;
+		label = "msm_gpio_85";
+		qcom,pin-func = <1>;
+		msm_gpio_85_act: active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		msm_gpio_85_sus: suspend {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		msm_gpio_85_def: default {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_86: SPI_MISO */
+	msm_gpio_86 {
+		qcom,pins = <&gp 86>;
+		qcom,num-grp-pins = <1>;
+		label = "msm_gpio_86";
+		qcom,pin-func = <1>;
+		msm_gpio_86_act: active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		msm_gpio_86_sus: suspend {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		msm_gpio_86_def: default {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_87: SPI_CS_N */
+	msm_gpio_87 {
+		qcom,pins = <&gp 87>;
+		qcom,num-grp-pins = <1>;
+		label = "msm_gpio_87";
+		qcom,pin-func = <1>;
+		msm_gpio_87_def: default {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_88: SPI_CLK */
+	msm_gpio_88 {
+		qcom,pins = <&gp 88>;
+		qcom,num-grp-pins = <1>;
+		label = "msm_gpio_88";
+		qcom,pin-func = <1>;
+		msm_gpio_88_act: active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		msm_gpio_88_sus: suspend {
+			drive-strength = <2>;
+			bias-disable;
+		};
+		msm_gpio_88_def: default {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_89: SPI_RST */
+	msm_gpio_89 {
+		qcom,pins = <&gp 89>;
+		qcom,num-grp-pins = <1>;
+		label = "msm_gpio_89";
+		qcom,pin-func = <0>;
+		msm_gpio_89_def: default {
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	/* GPIO_90: SPI_IRQ */
+	msm_gpio_90 {
+		qcom,pins = <&gp 90>;
+		qcom,num-grp-pins = <1>;
+		label = "msm_gpio_90";
+		qcom,pin-func = <0>;
+		msm_gpio_90_def: default {
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	fpc_spi_active {
+		qcom,pins = <&gp 85>, <&gp 86>, <&gp 87>, <&gp 88>;
+		qcom,num-grp-pins = <4>;
+		qcom,pin-func = <1>;
+		label = "fpc_spi_active";
+		fpc_spi_active: active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	fpc_cs_manual {
+		qcom,pins = <&gp 87>;
+		qcom,num-grp-pins = <1>;
+		label = "fpc_cs_manual";
+		qcom,pin-func = <0>;
+		fpc_cs_low: output-low {
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+		fpc_cs_high: output-high {
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+
+	fpc_cs_active {
+		qcom,pins = <&gp 87>;
+		qcom,num-grp-pins = <1>;
+		label = "fpc_cs_active";
+		qcom,pin-func = <1>;
+		fpc_cs_active: spi-active {
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	fpc_reset {
+		qcom,pins = <&gp 89>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "fpc_reset";
+		fpc_reset_reset: reset {
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+		fpc_reset_active: active {
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+
+	fpc_irq_active {
+		qcom,pins = <&gp 90>;
+		qcom,num-grp-pins = <1>;
+		qcom,pin-func = <0>;
+		label = "fpc_irq_active";
+		fpc_irq_active: active {
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+		};
+	};
+};
+

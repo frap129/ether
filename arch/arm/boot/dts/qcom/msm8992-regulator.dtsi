@@ -261,9 +261,14 @@
 	rpm-regulator-ldoa17 {
 		status = "okay";
 		pm8994_l17: regulator-l17 {
-			regulator-min-microvolt = <2700000>;
-			regulator-max-microvolt = <2700000>;
-			qcom,init-voltage = <2700000>;
+/*>>ClarkIHLin[NBQ-56]:[Camera] Implement main camera driver*/
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage = <2800000>;
+//			regulator-min-microvolt = <2700000>;
+//			regulator-max-microvolt = <2700000>;
+//			qcom,init-voltage = <2700000>;
+/*<<ClarkIHLin[NBQ-56]:[Camera] Implement main camera driver*/
 			status = "okay";
 		};
 	};
@@ -404,9 +409,11 @@
 	rpm-regulator-ldoa31 {
 		status = "okay";
 		pm8994_l31: regulator-l31 {
-			regulator-min-microvolt = <1262500>;
-			regulator-max-microvolt = <1262500>;
-			qcom,init-voltage = <1262500>;
+/* NBQ - AlbertWu - [NBQM-623] - [USB] Add HD3SS3220 USB type C driver in Android M OS. */
+			regulator-min-microvolt = <1200000>; //<1262500>
+			regulator-max-microvolt = <1200000>; //<1262500>
+			qcom,init-voltage = <1200000>; //<1262500>
+/* end  NBQ - AlbertWu - [NBQM-623] */
 			status = "okay";
 		};
 	};

@@ -1,0 +1,9 @@
+#
+# Makefile for FPC fingerprint TEE driver.
+#
+config FIH_FPC_FP_TEE
+	tristate "FPC fingerprint TEE support"
+	depends on SPI_QUP
+	depends on FB
+	help
+	  If you say yes here, you get support for FPC fingerprint TEE driver.

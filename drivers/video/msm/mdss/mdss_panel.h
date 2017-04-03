@@ -336,6 +336,7 @@ struct mipi_panel_info {
 	char stream;	/* 0 or 1 */
 	char mdp_trigger;
 	char dma_trigger;
+	char refresh_rate;
 	/* Dynamic Switch Support */
 	enum dynamic_mode_switch dms_mode;
 
@@ -362,6 +363,7 @@ enum dynamic_fps_update {
 	DFPS_IMMEDIATE_CLK_UPDATE_MODE,
 	DFPS_IMMEDIATE_PORCH_UPDATE_MODE_VFP,
 	DFPS_IMMEDIATE_PORCH_UPDATE_MODE_HFP,
+	DFPS_IMMEDIATE_LCM_CLK_UPDATE_MODE,
 	DFPS_MODE_MAX
 };
 
