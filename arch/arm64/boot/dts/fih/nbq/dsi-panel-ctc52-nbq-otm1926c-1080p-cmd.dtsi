@@ -97,30 +97,6 @@
 		qcom,esd-check-enabled;
 		qcom,mdss-dsi-lp11-init;
 
-		qcom,mdss-dsi-cabc-off-command = [
-			15 01 00 00 00 00 02 51 FF
-			15 01 00 00 05 00 02 55 00
-			15 01 00 00 00 00 02 53 24
-		];
-
-		qcom,mdss-dsi-cabc-ui-command = [
-			15 01 00 00 00 00 02 51 FF
-			15 01 00 00 05 00 02 55 01
-			15 01 00 00 00 00 02 53 24
-		];
-
-		qcom,mdss-dsi-cabc-still-command = [
-			15 01 00 00 00 00 02 51 FF
-			15 01 00 00 05 00 02 55 02
-			15 01 00 00 00 00 02 53 24
-		];
-
-		qcom,mdss-dsi-cabc-moving-command = [
-			15 01 00 00 00 00 02 51 FF
-			15 01 00 00 05 00 02 55 03
-			15 01 00 00 00 00 02 53 24
-		];
-
 		qcom,nbq-low-power-fps-command = [
 			29 01 00 00 00 00 02 00 00
 			29 01 00 00 00 00 04 FF 19 06 01
@@ -169,16 +145,19 @@
 			39 01 00 00 00 00 03 44 03 c0
 		];
 
-		qcom,mdss-dsi-cabc-off-command-state = "dsi_lp_mode";
-		qcom,mdss-dsi-cabc-ui-command-state = "dsi_lp_mode";
-		qcom,mdss-dsi-cabc-still-command-state = "dsi_lp_mode";
-		qcom,mdss-dsi-cabc-moving-command-state = "dsi_lp_mode";
-
 		qcom,nbq-low-power-fps-command-state = "dsi_lp_mode";
 		qcom,nbq-mid-power-fps-command-state = "dsi_lp_mode";
 		qcom,nbq-default-power-fps-command-state = "dsi_lp_mode";
 
-		qcom,mdss-dsi-ce-on-command = [
+		cm,mdss-livedisplay-command-state = "dsi_lp_mode";
+
+		cm,mdss-livedisplay-cabc-cmd = [
+			15 01 00 00 10 00 02 55 00];
+		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
+		cm,mdss-livedisplay-cabc-image-value = <0x02>;
+		cm,mdss-livedisplay-cabc-video-value = <0x03>;
+
+		cm,mdss-livedisplay-color-enhance-on = [
 			29 01 00 00 00 00 02 00 00
 			29 01 00 00 00 00 04 FF 19 06 01
 			29 01 00 00 00 00 02 00 80
@@ -199,11 +178,8 @@
 			29 01 00 00 00 00 02 FB 01
 		];
 
-		qcom,mdss-dsi-ce-off-command = [
+		cm,mdss-livedisplay-color-enhance-off = [
 			39 01 00 00 00 00 02 81 00
 		];
-
-		qcom,mdss-dsi-ce-on-command-state = "dsi_lp_mode";
-		qcom,mdss-dsi-ce-off-command-state = "dsi_lp_mode";
 	};
 };
