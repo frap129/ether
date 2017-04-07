@@ -152,7 +152,12 @@
 		cm,mdss-livedisplay-command-state = "dsi_lp_mode";
 
 		cm,mdss-livedisplay-cabc-cmd = [
-			15 01 00 00 10 00 02 55 00];
+			15 01 00 00 00 00 02 51 FF
+			15 01 00 00 05 00 02 55 00
+			15 01 00 00 00 00 02 53 24
+		];
+		cm,mdss-livedisplay-cabc-cmds-value-index = <0x11>;
+
 		cm,mdss-livedisplay-cabc-ui-value = <0x01>;
 		cm,mdss-livedisplay-cabc-image-value = <0x02>;
 		cm,mdss-livedisplay-cabc-video-value = <0x03>;

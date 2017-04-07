@@ -255,9 +255,8 @@ static int mdss_livedisplay_update_locked(struct mdss_dsi_ctrl_pdata *ctrl_pdata
 	// CABC/SRE/ACO features
 	if (is_cabc_cmd(types) && mlc->cabc_cmds_len) {
 		memcpy(cmd_buf + dlen, mlc->cabc_cmds, mlc->cabc_cmds_len);
+		cmd_buf[dlen + mlc->cabc_cmds_value_index] = cabc_value;
 		dlen += mlc->cabc_cmds_len;
-		// The CABC command parameter is the last value in the sequence
-		cmd_buf[dlen - 1] = cabc_value;
 	}
 
 	// And the post_cmd, can be used to turn on the panel
@@ -598,6 +597,10 @@ int mdss_livedisplay_parse_dt(struct device_node *np, struct mdss_panel_info *pi
 		if (rc == 0) {
 			mlc->caps |= MODE_AUTO_CONTRAST;
 			mlc->aco_value = (uint8_t)(tmp & 0xFF);
+		}
+		rc = of_property_read_u32(np, "cm,mdss-livedisplay-cabc-cmds-value-index", &tmp);
+		if (rc == 0) {
+			mlc->cabc_cmds_value_index = tmp;
 		}
 	}
 

@@ -41,6 +41,7 @@ struct mdss_livedisplay_ctx {
 
 	const uint8_t *cabc_cmds;
 	unsigned int cabc_cmds_len;
+	unsigned int cabc_cmds_value_index;
 
 	const uint8_t *post_cmds;
 	unsigned int post_cmds_len;
