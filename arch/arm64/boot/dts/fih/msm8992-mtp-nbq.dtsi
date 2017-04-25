@@ -11,7 +11,6 @@
  */
 
 #include "msm8992-pinctrl.dtsi"
-#include "fih/nbq/msm8992-camera-sensor-mtp-nbq-evt15.dtsi"
 
 #include "fih/nbq/dsi-panel-ctc52-nbq-otm1926c-1080p-cmd.dtsi"
 #include "fih/nbq/dsi-panel-ctc52-nbq-otm1926c-1080p-video.dtsi"
@@ -375,7 +374,7 @@
 		reg = <0x20>;
 		interrupt-parent = <&msm_gpio>;
 		interrupts = <1 0x2008>;
-		vdd-supply = <&pm8994_lvs1>;
+		vdd-supply = <&pm8994_l14>;
 		avdd-supply = <&pm8994_l22>;
 		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
 		pinctrl-0 = <&ts_active>;
@@ -723,7 +722,7 @@
 
 /{
 	mtp_batterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <7>;
+		qcom,batt-id-range-pct = <100>;
 	};
 };
 
