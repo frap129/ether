@@ -558,14 +558,7 @@
 	};
 };
 
-/{
-	mtp_batterydata: qcom,battery-data {
-		qcom,batt-id-range-pct = <100>;
-	};
-};
-
 &pmi8994_fg {
-	qcom,battery-data = <&mtp_batterydata>;
 	qcom,ext-sense-type;
 };
 
