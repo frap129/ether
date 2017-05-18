@@ -120,6 +120,10 @@
 	status = "ok";
 };
 
+&blsp2_uart2 {
+	status = "ok";
+};
+
 &pmi8994_haptics {
 	status = "okay";
 };
