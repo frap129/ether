@@ -2048,6 +2048,15 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip)
 			rc);
 		goto disable_parallel;
 	}
+
+	// TheCrazyLex@PA Provide float voltage - start
+	rc = power_supply_set_voltage_limit(chip->usb_psy,
+			(chip->vfloat_mv + 50) * 1000);
+	if (rc)
+		dev_err(chip->dev, "Couldn't set float voltage on usb psy rc: %d\n",
+			rc);
+	// TheCrazyLex@PA Provide float voltage - end
+
 	chip->target_fastchg_current_ma = chip->cfg_fastchg_current_ma / 2;
 	smbchg_set_fastchg_current(chip, chip->target_fastchg_current_ma);
 	pval.intval = chip->target_fastchg_current_ma * 1000;
@@ -2746,10 +2755,19 @@ static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 	rc = smbchg_sec_masked_write(chip, chip->chgr_base + VFLOAT_CFG_REG,
 			VFLOAT_MASK, temp);
 
-	if (rc)
+	if (rc) {
 		dev_err(chip->dev, "Couldn't set float voltage rc = %d\n", rc);
-	else
-		chip->vfloat_mv = vfloat_mv;
+		return rc;
+	}
+
+	chip->vfloat_mv = vfloat_mv;
+
+	// TheCrazyLex@PA Provide float voltage - start
+	rc = power_supply_set_voltage_limit(chip->usb_psy,
+			chip->vfloat_mv * 1000);
+	if (rc)
+		dev_err(chip->dev, "Couldn't set float voltage on usb psy rc = %d\n", rc);
+	// TheCrazyLex@PA Provide float voltage - end
 
 	return rc;
 }
