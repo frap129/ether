@@ -734,21 +734,29 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 		blank = evdata->data;
 
 		switch (*blank) {
+ 		case FB_BLANK_UNBLANK:
+		case FB_BLANK_NORMAL:
+		case FB_BLANK_VSYNC_SUSPEND:
+		case FB_BLANK_HSYNC_SUSPEND:
+			if (!screen_on) {
+				screen_on = true;
+				pr_info("fpc1020: resuming++\n");
+				(void) irq_active_toggle_safe(true, fpc1020->dev);
+				// TheCrazyLex@PA move handling of resuming clocks into the FB notifier - start
+				fpc1020_resume(fpc1020->dev);
+				// TheCrazyLex@PA move handling of resuming clocks into the FB notifier - end
+				pr_info("fpc1020: resumed --\n");
+			}
+			break;
 		case FB_BLANK_POWERDOWN:
-			screen_on = false;
-			pr_info("fpc1020: suspending++\n");
-			(void) irq_active_toggle_safe(false, fpc1020->dev);
-			pr_info("fpc1020: suspended --\n");
-		break;
-		case FB_BLANK_UNBLANK:
-			screen_on = true;
-			pr_info("fpc1020: resuming++\n");
-			(void) irq_active_toggle_safe(true, fpc1020->dev);
-			// TheCrazyLex@PA move handling of resuming clocks into the FB notifier - start
-			fpc1020_resume(fpc1020->dev);
-			// TheCrazyLex@PA move handling of resuming clocks into the FB notifier - end
-			pr_info("fpc1020: resumed --\n");
-		break;
+		default:
+			if (screen_on) {
+				screen_on = false;
+				pr_info("fpc1020: suspending++\n");
+				(void) irq_active_toggle_safe(false, fpc1020->dev);
+				pr_info("fpc1020: suspended --\n");
+			}
+			break;
 		}
 	}
 
