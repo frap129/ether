@@ -5374,6 +5374,10 @@ find_idlest_cpu(struct sched_group *group, struct task_struct *p, int this_cpu)
 	int least_loaded_cpu = this_cpu;
 	int shallowest_idle_cpu = -1;
 	int i;
+	
+	/* Check if we have any choice: */
+ 	if (group->group_weight == 1)
+ 		return cpumask_first(sched_group_cpus(group));
 
 	/* Check if we have any choice: */
 	if (group->group_weight == 1)
