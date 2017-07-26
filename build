@@ -7,7 +7,7 @@
 # Variables
 export ARCH=arm64
 export SUBARCH=arm64
-export CROSS_COMPILE="/home/frap129/android/rom/carbon/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
+export CROSS_COMPILE="/home/frap129/android/kernel/aarch64-linaro-linux-gnu/bin/aarch64-linux-gnu-"
 THREAD=-j$(bc <<< $(grep -c ^processor /proc/cpuinfo)+2)
 DEFCONFIG="ether_eas_defconfig"
 KROOT="$(pwd)"
