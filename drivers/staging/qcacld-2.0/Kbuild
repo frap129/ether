@@ -1581,7 +1581,7 @@ endif
 
 KBUILD_CPPFLAGS += $(CDEFINES)
 
-EXTRA_CFLAGS += -Wno-unused-function -Wno-unused-variable
+EXTRA_CFLAGS += -Wno-unused-function -Wno-unused-variable -Wno-error=switch-unreachable -Wno-error=bool-compare
 
 # If the module name is not "wlan", then the define MULTI_IF_NAME to be the
 # same a the QCA CHIP name. The host driver will then append MULTI_IF_NAME to
