@@ -509,6 +509,19 @@ static inline int cpufreq_generic_exit(struct cpufreq_policy *policy)
  *                         CPUFREQ STATS                             *
  *********************************************************************/
 
+#ifdef CONFIG_CPU_FREQ_STAT
+
 void acct_update_power(struct task_struct *p, cputime_t cputime);
 
+#else
+
+static inline void acct_update_power(struct task_struct *p, cputime_t cputime)
+{
+}
+
+#endif
+
+struct sched_domain;
+unsigned long cpufreq_scale_freq_capacity(struct sched_domain *sd, int cpu);
+unsigned long cpufreq_scale_max_freq_capacity(int cpu);
 #endif /* _LINUX_CPUFREQ_H */

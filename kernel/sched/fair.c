@@ -5486,14 +5486,14 @@ static inline int find_best_target(struct task_struct *p)
 {
 	int i;
 	int target_cpu = -1;
-	int target_capacity;
+	int target_capacity = 0;
 	int idle_cpu = -1;
 	int backup_cpu = -1;
 
 	/*
 	 * Favor 1) busy cpu with most capacity at current OPP
-	 *       2) busy cpu with capacity at higher OPP
-	 *       3) idle_cpu with capacity at current OPP
+	 *       2) idle_cpu with capacity at current OPP
+	 *       3) busy cpu with capacity at higher OPP
 	 */
 	for_each_cpu(i, tsk_cpus_allowed(p)) {
 
@@ -5528,7 +5528,7 @@ static inline int find_best_target(struct task_struct *p)
 	}
 
 	if (target_cpu < 0) {
-		target_cpu = backup_cpu >= 0 ? backup_cpu : idle_cpu;
+		target_cpu = idle_cpu >= 0 ? idle_cpu : backup_cpu;
 	}
 
 	return target_cpu;
