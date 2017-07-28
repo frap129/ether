@@ -24,7 +24,6 @@
 #include <linux/string.h>
 
 #include "mdss_dsi.h"
-#include "mdss_livedisplay.h"
 
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 30
@@ -217,7 +216,7 @@ bool IsNewLCM(void)
 }
 /*} FIH, Hubert, 20151127, use lcm regs (DBh) to work with TP FW upgrade*/
 
-void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
 {
 	struct dcs_cmd_req cmdreq;
@@ -911,7 +910,7 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 }
 
 
-int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
 {
 	const char *data;
@@ -2127,8 +2126,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->default_power_fps_cmds,
 		"qcom,nbq-default-power-fps-command",
 		"qcom,nbq-default-power-fps-command-state");
-
-	mdss_livedisplay_parse_dt(np, pinfo);
 
 	return 0;
 
