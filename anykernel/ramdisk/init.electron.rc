@@ -1,0 +1,36 @@
+# Start Electron changes
+
+on property:sys.boot_completed=1
+    # set default schedTune value for foreground/top-app (only affects EAS)
+    write /dev/stune/foreground/schedtune.prefer_idle 1
+    write /dev/stune/foreground/schedtune.boost 0
+    write /dev/stune/background/schedtune.boost 0
+    write /dev/stune/background/schedtune.prefer_idle 0
+    write /dev/stune/top-app/schedtune.boost 0
+    write /dev/stune/top-app/schedtune.prefer_idle 1
+    write /dev/stune/schedtune.boost 0
+    write /dev/stune/schedtune.prefer_idle 0
+
+    # Set EAS governor, make sure second cluster is online
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor sched
+    write /sys/devices/system/cpu/cpu4/online 1
+    write /sys/devices/system/cpu/cpu5/online 1
+    write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor sched
+
+    # Tune CPU Boost
+    write /sys/module/cpu_boost/parameters/boost_ms 40
+    write /sys/module/cpu_boost/parameters/input_boost_freq "0:600000 1:600000 2:600000 3:600000 4:960000 5:960000"
+    write /sys/module/cpu_boost/parameters/sync_threshold 1248000
+    write /sys/module/cpu_boost/parameters/migration_load_threshold 15
+    write /sys/module/cpu_boost/parameters/load_based_syncs Y
+    write /sys/module/cpu_boost/parameters/shed_boost_on_input N
+    write /sys/module/cpu_boost/parameters/input_boost_ms 300
+    write /sys/module/cpu_boost/parameters/input_boost_enabled 1
+    write /sys/module/msm_performance/parameters/touchboost 0
+    write /sys/class/kgsl/kgsl-3d0/devfreq/governor msm-adreno-tz
+
+    # Set Swappiness
+    write /proc/sys/vm/swappiness 8
+
+    # Enable Laptop Mode
+    write /proc/sys/vm/laptop_mode 1
